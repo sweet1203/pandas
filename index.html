@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>CSV 데이터 분석기</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', '맑은 고딕', 'Noto Sans KR', sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      margin: 0;
+      opacity: 0.9;
+    }
+    
+    .content {
+      padding: 2rem;
+    }
+    
+    .file-upload {
+      border: 3px dashed #667eea;
+      border-radius: 15px;
+      padding: 3rem 2rem;
+      text-align: center;
+      margin-bottom: 2rem;
+      background-color: #f8f9ff;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .file-upload:hover {
+      background-color: #e8ecff;
+      border-color: #5a6fd8;
+    }
+    
+    .file-upload.dragover {
+      background-color: #e8ecff;
+      border-color: #5a6fd8;
+      transform: scale(1.02);
+    }
+    
+    .file-upload i {
+      font-size: 3rem;
+      color: #667eea;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    
+    .file-upload p {
+      font-size: 1.1rem;
+      color: #666;
+      margin: 0;
+    }
+    
+    .file-upload .small {
+      font-size: 0.9rem;
+      color: #999;
+      margin-top: 0.5rem;
+    }
+    
+    .analysis-result {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #f8f9ff;
+      border-radius: 10px;
+      border: 1px solid #e8ecff;
+      display: none;
+    }
+    
+    .analysis-result h3 {
+      color: #667eea;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
+    .analysis-result table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+      min-width: 600px;
+    }
+    
+    .analysis-result th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 8px;
+      text-align: center;
+      font-weight: 600;
+    }
+    
+    .analysis-result td {
+      padding: 10px 8px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .analysis-result tr:nth-child(even) {
+      background-color: #f8f9ff;
+    }
+    
+    .analysis-result tr:hover {
+      background-color: #e8ecff;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #667eea;
+      font-weight: bold;
+      padding: 2rem;
+    }
+    
+    .loading i {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .error {
+      background: #ffe6e6;
+      color: #d63031;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ff7675;
+      text-align: center;
+    }
+    
+    .info-box {
+      background: #e8f4fd;
+      border: 1px solid #b3d9ff;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .info-box h4 {
+      color: #0066cc;
+      margin-top: 0;
+    }
+    
+    .info-box ul {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+    
+    .info-box li {
+      margin-bottom: 0.3rem;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 0;
+        border-radius: 0;
+      }
+      
+      .header {
+        padding: 1.5rem;
+      }
+      
+      .header h1 {
+        font-size: 1.5rem;
+      }
+      
+      .content {
+        padding: 1rem;
+      }
+      
+      .file-upload {
+        padding: 2rem 1rem;
+      }
+      
+      .analysis-result table {
+        font-size: 0.8rem;
+      }
+      
+      .analysis-result th,
+      .analysis-result td {
+        padding: 6px 4px;
+      }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 CSV 데이터 분석기</h1>
+      <p>pandas info(), describe(), 결측치 분석 및 처리를 웹에서 사용해보세요</p>
+    </div>
+    
+    <div class="content">
+      <div class="info-box">
+        <h4>📋 사용 방법</h4>
+        <ul>
+          <li>CSV 파일을 드래그하거나 클릭하여 업로드하세요</li>
+          <li>숫자형 데이터 컬럼이 자동으로 감지됩니다</li>
+          <li>pandas describe()와 동일한 통계 정보를 제공합니다</li>
+          <li>count, mean, std, min, 25%, 50%, 75%, max 값을 확인할 수 있습니다</li>
+        </ul>
+        
+        <h4>⚠️ 주의사항</h4>
+        <ul>
+          <li><strong>엑셀 파일 사용 시:</strong> "다른 이름으로 저장" → "파일 형식: CSV UTF-8"로 저장해주세요</li>
+          <li>한글 깨짐 방지를 위해 UTF-8 인코딩을 권장합니다</li>
+          <li>대용량 파일(100MB 이상)은 처리 시간이 오래 걸릴 수 있습니다</li>
+        </ul>
+        
+        <h4>🆕 새로운 기능</h4>
+        <ul>
+          <li><strong>📈 데이터 정보 (info):</strong> 컬럼별 데이터 타입, 메모리 사용량 등 상세 정보</li>
+          <li><strong>🔍 결측치 분석:</strong> 각 컬럼별 결측치 개수와 비율을 시각적으로 표시</li>
+          <li><strong>🧹 결측치 처리:</strong> 삭제, 평균값 대체, 최빈값 대체 옵션 제공</li>
+          <li><strong>📊 특정 열 분석:</strong> 원하는 컬럼만 선택하여 상세 분석</li>
+          <li><strong>🔄 실시간 업데이트:</strong> 결측치 처리 후 분석 결과 자동 갱신</li>
+        </ul>
+      </div>
+      
+      <div class="file-upload" id="fileUpload">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <p>📁 CSV 파일을 여기에 드래그하거나 클릭하여 업로드하세요</p>
+        <p class="small">💡 지원 형식: .csv 파일</p>
+        <input type="file" id="csvFile" accept=".csv" style="display: none;">
+      </div>
+      
+      <div id="loadingIndicator" class="loading" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>데이터를 분석하고 있습니다...</p>
+      </div>
+      
+      <div id="analysisResult" class="analysis-result"></div>
+    </div>
+  </div>
+
+  <script>
+    let globalData = null; // 전역 변수로 데이터 저장
+    let globalInfoData = null;
+
+    function calculateInfo(data) {
+      const info = {
+        totalRows: data.length - 1,
+        totalColumns: data[0].length,
+        columns: []
+      };
+
+      data[0].forEach((header, index) => {
+        let nonNullCount = 0;
+        let numericCount = 0;
+        
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][index] && data[i][index].trim() !== '') {
+            nonNullCount++;
+            if (!isNaN(parseFloat(data[i][index]))) {
+              numericCount++;
+            }
+          }
+        }
+
+        const dtype = numericCount === nonNullCount ? 'float64' : 'object';
+        
+        info.columns.push({
+          name: header,
+          nonNullCount: nonNullCount,
+          dtype: dtype
+        });
+      });
+
+      // 메모리 사용량 계산 (대략적인 추정)
+      info.memoryUsage = ((info.totalRows * info.totalColumns * 8) / 1024).toFixed(2);
+
+      return info;
+    }
+
+    function calculateDescribe(data, selectedColumn = null) {
+      const numericColumns = [];
+      const results = {};
+
+      // 숫자형 컬럼 찾기 (캐싱 활용)
+      if (!data._numericColumnsCache) {
+        data._numericColumnsCache = [];
+        data[0].forEach((header, index) => {
+          let isNumeric = true;
+          // 샘플링으로 빠른 체크 (처음 100개 행만 확인)
+          const sampleSize = Math.min(100, data.length - 1);
+          for (let i = 1; i <= sampleSize; i++) {
+            if (data[i][index] && isNaN(parseFloat(data[i][index]))) {
+              isNumeric = false;
+              break;
+            }
+          }
+          if (isNumeric) {
+            data._numericColumnsCache.push(index);
+          }
+        });
+      }
+
+      const columnsToProcess = selectedColumn !== null ? [parseInt(selectedColumn)] : data._numericColumnsCache;
+
+      // 각 숫자형 컬럼에 대해 describe 계산
+      columnsToProcess.forEach(colIndex => {
+        const columnName = data[0][colIndex];
+        const values = [];
+        
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][colIndex] && !isNaN(parseFloat(data[i][colIndex]))) {
+            values.push(parseFloat(data[i][colIndex]));
+          }
+        }
+
+        if (values.length > 0) {
+          values.sort((a, b) => a - b);
+          const count = values.length;
+          const mean = values.reduce((a, b) => a + b, 0) / count;
+          const std = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / count);
+          
+          results[columnName] = {
+            count: count,
+            mean: mean.toFixed(2),
+            std: std.toFixed(2),
+            min: values[0].toFixed(2),
+            '25%': values[Math.floor(count * 0.25)].toFixed(2),
+            '50%': values[Math.floor(count * 0.5)].toFixed(2),
+            '75%': values[Math.floor(count * 0.75)].toFixed(2),
+            max: values[values.length - 1].toFixed(2)
+          };
+        }
+      });
+
+      return results;
+    }
+
+    function calculateMissingData(data) {
+      const missingInfo = {
+        totalRows: data.length - 1,
+        totalColumns: data[0].length,
+        columns: []
+      };
+
+      data[0].forEach((header, index) => {
+        let nullCount = 0;
+        let nonNullCount = 0;
+        
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][index] && data[i][index].trim() !== '') {
+            nonNullCount++;
+          } else {
+            nullCount++;
+          }
+        }
+
+        const nullPercentage = ((nullCount / missingInfo.totalRows) * 100).toFixed(2);
+        
+        missingInfo.columns.push({
+          name: header,
+          nullCount: nullCount,
+          nonNullCount: nonNullCount,
+          nullPercentage: nullPercentage
+        });
+      });
+
+      return missingInfo;
+    }
+
+    function displayInfoResult(data) {
+      let html = '<h3><i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>📈 데이터 정보 (pandas info)</h3>';
+      html += '<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-family: monospace; font-size: 0.9rem;">';
+      html += `<div style="margin-bottom: 0.5rem;"><strong>RangeIndex:</strong> ${data.totalRows} entries, 0 to ${data.totalRows - 1}</div>`;
+      html += `<div style="margin-bottom: 0.5rem;"><strong>Data columns (total ${data.totalColumns} columns):</strong></div>`;
+      
+      html += '<div class="table-container">';
+      html += '<table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; min-width: 600px;">';
+      html += '<thead><tr style="border-bottom: 1px solid #ddd;">';
+      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">#</th>';
+      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">Column</th>';
+      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Non-Null</th>';
+      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Dtype</th>';
+      html += '</tr></thead><tbody>';
+      
+      data.columns.forEach((col, index) => {
+        html += '<tr style="border-bottom: 1px solid #eee;">';
+        html += `<td style="padding: 4px 8px;">${index}</td>`;
+        html += `<td style="padding: 4px 8px;">${col.name}</td>`;
+        html += `<td style="padding: 4px 8px; text-align: center;">${col.nonNullCount}</td>`;
+        html += `<td style="padding: 4px 8px; text-align: center;">${col.dtype}</td>`;
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '</div>';
+      
+      html += `<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #ddd;">`;
+      html += `<strong>Memory usage:</strong> ${data.memoryUsage} KB`;
+      html += '</div></div>';
+      
+      return html;
+    }
+
+    function displayMissingDataResult(missingData) {
+      let html = '<h3><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>🔍 결측치 분석</h3>';
+      html += '<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-family: monospace; font-size: 0.9rem;">';
+      html += `<div style="margin-bottom: 0.5rem;"><strong>총 행 수:</strong> ${missingData.totalRows}</div>`;
+      html += `<div style="margin-bottom: 0.5rem;"><strong>총 열 수:</strong> ${missingData.totalColumns}</div>`;
+      
+      html += '<div class="table-container">';
+      html += '<table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; min-width: 600px;">';
+      html += '<thead><tr style="border-bottom: 1px solid #ddd;">';
+      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">#</th>';
+      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">Column</th>';
+      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Non-Null</th>';
+      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Null</th>';
+      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Null %</th>';
+      html += '</tr></thead><tbody>';
+      
+      missingData.columns.forEach((col, index) => {
+        const nullColor = parseFloat(col.nullPercentage) > 10 ? '#ff6b6b' : '#51cf66';
+        html += '<tr style="border-bottom: 1px solid #eee;">';
+        html += `<td style="padding: 4px 8px;">${index}</td>`;
+        html += `<td style="padding: 4px 8px;">${col.name}</td>`;
+        html += `<td style="padding: 4px 8px; text-align: center; color: #51cf66;">${col.nonNullCount}</td>`;
+        html += `<td style="padding: 4px 8px; text-align: center; color: #ff6b6b;">${col.nullCount}</td>`;
+        html += `<td style="padding: 4px 8px; text-align: center; color: ${nullColor}; font-weight: bold;">${col.nullPercentage}%</td>`;
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '</div>';
+      
+      // 전체 결측치 요약
+      const totalNulls = missingData.columns.reduce((sum, col) => sum + col.nullCount, 0);
+      const totalCells = missingData.totalRows * missingData.totalColumns;
+      const totalNullPercentage = ((totalNulls / totalCells) * 100).toFixed(2);
+      
+      html += `<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #ddd;">`;
+      html += `<strong>전체 결측치:</strong> ${totalNulls} / ${totalCells} (${totalNullPercentage}%)`;
+      html += '</div></div>';
+      
+      // 결측치 처리 메뉴 추가
+      html += '<div style="background: #fff3cd; padding: 1.5rem; border-radius: 10px; border: 1px solid #ffeaa7; margin-bottom: 1rem;">';
+      html += '<h4 style="color: #856404; margin-bottom: 1rem; margin-top: 0;">';
+      html += '<i class="fas fa-tools" style="margin-right: 0.5rem;"></i>🧹 결측치 처리';
+      html += '</h4>';
+      html += '<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">';
+      html += '<label for="missingColumnSelect" style="font-weight: bold;">처리할 열:</label>';
+      html += '<select id="missingColumnSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">';
+      html += '<option value="">전체 열</option>';
+      
+      missingData.columns.forEach((col, index) => {
+        if (col.nullCount > 0) {
+          html += `<option value="${index}">${index}: ${col.name} (${col.nullCount}개 결측)</option>`;
+        }
+      });
+      
+      html += '</select>';
+      html += '<label for="missingMethodSelect" style="font-weight: bold;">처리 방법:</label>';
+      html += '<select id="missingMethodSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;">';
+      html += '<option value="delete">결측치 삭제</option>';
+      html += '<option value="mean">평균값 대체</option>';
+      html += '<option value="mode">최빈값 대체</option>';
+      html += '</select>';
+      html += '<button id="processMissing" style="padding: 0.5rem 1rem; background: #856404; color: white; border: none; border-radius: 4px; cursor: pointer;">';
+      html += '<i class="fas fa-magic" style="margin-right: 0.5rem;"></i>처리';
+      html += '</button>';
+      html += '</div>';
+      html += '<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #856404;">';
+      html += '<strong>참고:</strong> 결측치가 있는 열만 선택 가능합니다.';
+      html += '</div>';
+      html += '</div>';
+      
+      return html;
+    }
+
+    function displayDescribeResult(describeData) {
+      let html = '<h3><i class="fas fa-chart-bar" style="margin-right: 0.5rem;"></i>📊 데이터 분석 결과 (pandas describe)</h3>';
+      html += '<div class="table-container">';
+      html += '<table><thead><tr><th>통계</th>';
+      
+      const columns = Object.keys(describeData);
+      columns.forEach(col => {
+        html += `<th>${col}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      const stats = ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max'];
+      stats.forEach(stat => {
+        html += `<tr><td style="font-weight: bold; color: #667eea;">${stat}</td>`;
+        columns.forEach(col => {
+          html += `<td>${describeData[col][stat]}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      html += '</div>';
+      
+      // 열 선택 메뉴 추가
+      html += '<div style="background: #f8f9ff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e8ecff; margin-bottom: 1rem;">';
+      html += '<h4 style="color: #667eea; margin-bottom: 1rem; margin-top: 0;">';
+      html += '<i class="fas fa-filter" style="margin-right: 0.5rem;"></i>📊 특정 열 분석';
+      html += '</h4>';
+      html += '<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">';
+      html += '<label for="columnSelect" style="font-weight: bold;">열 선택:</label>';
+      html += '<select id="columnSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">';
+      html += '<option value="">전체 열 분석</option>';
+      
+      if (globalData && globalData[0]) {
+        globalData[0].forEach((col, index) => {
+          html += `<option value="${index}">${index}: ${col}</option>`;
+        });
+      }
+      
+      html += '</select>';
+      html += '<button id="analyzeColumn" style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">';
+      html += '<i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>분석';
+      html += '</button>';
+      html += '</div>';
+      html += '</div>';
+      
+      return html;
+    }
+    
+    function analyzeSelectedColumn() {
+      const selectedColumn = document.getElementById('columnSelect').value;
+      if (!globalData) return;
+      
+      const describeData = calculateDescribe(globalData, selectedColumn);
+      const missingData = calculateMissingData(globalData);
+      displayAllResults(describeData, missingData, globalData);
+    }
+
+    function displayAllResults(describeData, missingData, data) {
+      globalData = data; // 전역 변수에 데이터 저장
+      
+      const resultDiv = document.getElementById('analysisResult');
+      resultDiv.style.display = 'block';
+
+      let html = '';
+      
+      // Info 결과
+      const infoData = calculateInfo(data);
+      html += displayInfoResult(infoData);
+      
+      // 결측치 분석 결과
+      html += displayMissingDataResult(missingData);
+      
+      // Describe 결과
+      if (Object.keys(describeData).length === 0) {
+        html += `
+          <div class="error">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            분석할 수 있는 숫자형 데이터가 없습니다.
+          </div>
+        `;
+      } else {
+        html += displayDescribeResult(describeData);
+      }
+      
+      resultDiv.innerHTML = html;
+      
+      // 이벤트 리스너 한 번만 설정
+      setupEventListeners();
+    }
+    
+    function setupEventListeners() {
+      // 결측치 처리 이벤트 리스너
+      const processButton = document.getElementById('processMissing');
+      if (processButton && !processButton.hasAttribute('data-listener-added')) {
+        processButton.setAttribute('data-listener-added', 'true');
+        processButton.addEventListener('click', handleProcessMissingClick);
+      }
+      
+      // 특정 열 분석 이벤트 리스너
+      const analyzeButton = document.getElementById('analyzeColumn');
+      if (analyzeButton && !analyzeButton.hasAttribute('data-listener-added')) {
+        analyzeButton.setAttribute('data-listener-added', 'true');
+        analyzeButton.addEventListener('click', analyzeSelectedColumn);
+      }
+    }
+    
+    function handleProcessMissingClick() {
+      const columnSelect = document.getElementById('missingColumnSelect');
+      const methodSelect = document.getElementById('missingMethodSelect');
+      
+      if (!columnSelect || !methodSelect) return;
+      
+      const selectedColumn = columnSelect.value;
+      const selectedMethod = methodSelect.value;
+      
+      if (!selectedMethod) {
+        alert('처리 방법을 선택해주세요.');
+        return;
+      }
+      
+      // 현재 데이터로 결측치 처리
+      const processedData = processMissingData(globalData, selectedColumn, selectedMethod);
+      
+      // 처리된 데이터로 분석 결과 업데이트
+      const describeData = calculateDescribe(processedData);
+      const missingData = calculateMissingData(processedData);
+      
+      // 결과 표시 업데이트
+      displayAllResults(describeData, missingData, processedData);
+      
+      // 처리 완료 메시지
+      const methodNames = {
+        'delete': '결측치 삭제',
+        'mean': '평균값 대체',
+        'mode': '최빈값 대체'
+      };
+      
+      const columnName = selectedColumn === '' ? '전체 열' : 
+        globalData[0][parseInt(selectedColumn)];
+      
+      alert(`${columnName}에 대해 ${methodNames[selectedMethod]} 처리가 완료되었습니다.`);
+    }
+
+    function handleFileUpload(file) {
+      console.log('handleFileUpload 시작:', file.name, file.size);
+      
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const resultDiv = document.getElementById('analysisResult');
+      
+      loadingIndicator.style.display = 'block';
+      resultDiv.style.display = 'none';
+
+      // 파일 크기 체크 (50MB 제한)
+      if (file.size > 50 * 1024 * 1024) {
+        console.log('파일이 너무 큼:', file.size);
+        loadingIndicator.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <div class="error">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            파일이 너무 큽니다. 50MB 이하의 파일을 사용해주세요.
+          </div>
+        `;
+        return;
+      }
+
+      // FileReader를 사용한 직접 파일 읽기
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        console.log('파일 읽기 완료, 크기:', e.target.result.byteLength);
+        const arrayBuffer = e.target.result;
+        
+        // BOM 제거 함수
+        function removeBOM(content) {
+          // UTF-8 BOM 제거
+          if (content.charCodeAt(0) === 0xFEFF) {
+            return content.slice(1);
+          }
+          // UTF-16 LE BOM 제거
+          if (content.charCodeAt(0) === 0xFFFE) {
+            return content.slice(1);
+          }
+          // UTF-16 BE BOM 제거
+          if (content.charCodeAt(0) === 0xFEFF && content.charCodeAt(1) === 0x0000) {
+            return content.slice(2);
+          }
+          return content;
+        }
+        
+        // 한글 깨짐 감지 함수 (최적화)
+        function isKoreanBroken(text) {
+          if (!text) return false;
+          // 주요 깨진 패턴만 체크
+          const brokenPatterns = [/ï»¿/, /ë/, /ì/, /í/, /î/, /ï/];
+          return brokenPatterns.some(pattern => pattern.test(text));
+        }
+        
+        // 인코딩 시도 (UTF-8 우선)
+        const encodings = ['UTF-8', 'EUC-KR', 'CP949'];
+        let currentEncodingIndex = 0;
+        let lastResults = null;
+
+        function tryParseWithEncoding() {
+          console.log('인코딩 시도:', encodings[currentEncodingIndex]);
+          
+          if (currentEncodingIndex >= encodings.length) {
+            console.log('모든 인코딩 시도 실패');
+            loadingIndicator.style.display = 'none';
+            
+            // 모든 인코딩 시도 후에도 실패하면 마지막 결과를 사용
+            if (lastResults && lastResults.data.length > 0) {
+              console.log('마지막 결과 사용:', lastResults.data.length, '행');
+              // 데이터 캐시 초기화
+              lastResults.data._numericColumnsCache = null;
+              const describeData = calculateDescribe(lastResults.data);
+              displayAllResults(describeData, calculateMissingData(lastResults.data), lastResults.data);
+            } else {
+              resultDiv.style.display = 'block';
+              resultDiv.innerHTML = `
+                <div class="error">
+                  <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                  CSV 파일을 읽을 수 없습니다. 파일을 UTF-8로 저장해주세요.
+                </div>
+              `;
+            }
+            return;
+          }
+
+          const encoding = encodings[currentEncodingIndex];
+          
+          try {
+            const decoder = new TextDecoder(encoding);
+            let content = decoder.decode(arrayBuffer);
+            
+            // BOM 제거
+            content = removeBOM(content);
+            console.log('디코딩된 내용 길이:', content.length);
+            
+            Papa.parse(content, {
+              complete: function(results) {
+                console.log('Papa.parse 완료:', results.data.length, '행, 오류:', results.errors.length);
+                lastResults = results;
+                
+                if (results.errors.length > 0) {
+                  console.log('파싱 오류:', results.errors);
+                  // 오류가 있으면 다음 인코딩 시도
+                  currentEncodingIndex++;
+                  tryParseWithEncoding();
+                  return;
+                }
+                
+                // 데이터가 제대로 파싱되었는지 확인
+                if (results.data.length === 0 || results.data[0].length === 0) {
+                  console.log('빈 데이터');
+                  currentEncodingIndex++;
+                  tryParseWithEncoding();
+                  return;
+                }
+                
+                // 한글이 깨졌는지 확인 (첫 번째 셀에서 확인)
+                const firstCell = results.data[0][0];
+                if (firstCell && isKoreanBroken(firstCell)) {
+                  console.log('한글 깨짐 감지:', firstCell);
+                  currentEncodingIndex++;
+                  tryParseWithEncoding();
+                  return;
+                }
+                
+                // 성공적으로 파싱된 경우
+                console.log('파싱 성공!');
+                loadingIndicator.style.display = 'none';
+                
+                // 데이터 캐시 초기화
+                results.data._numericColumnsCache = null;
+                const describeData = calculateDescribe(results.data);
+                displayAllResults(describeData, calculateMissingData(results.data), results.data);
+              },
+              error: function(error) {
+                console.log('Papa.parse 오류:', error);
+                currentEncodingIndex++;
+                tryParseWithEncoding();
+              }
+            });
+          } catch (error) {
+            console.log('디코딩 오류:', error);
+            currentEncodingIndex++;
+            tryParseWithEncoding();
+          }
+        }
+
+        tryParseWithEncoding();
+      };
+      
+      reader.onerror = function() {
+        console.log('FileReader 오류');
+        loadingIndicator.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <div class="error">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            파일을 읽는 중 오류가 발생했습니다.
+          </div>
+        `;
+      };
+      
+      // 파일을 ArrayBuffer로 읽기
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 결측치 처리 함수들
+    function processMissingData(data, columnIndex, method) {
+      const processedData = JSON.parse(JSON.stringify(data)); // 깊은 복사
+      
+      if (columnIndex === '') {
+        // 전체 열 처리
+        for (let col = 0; col < processedData[0].length; col++) {
+          processColumn(processedData, col, method);
+        }
+      } else {
+        // 특정 열 처리
+        processColumn(processedData, parseInt(columnIndex), method);
+      }
+      
+      return processedData;
+    }
+    
+    function processColumn(data, columnIndex, method) {
+      const values = [];
+      
+      // 유효한 값들 수집
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][columnIndex] && data[i][columnIndex].trim() !== '') {
+          values.push(data[i][columnIndex]);
+        }
+      }
+      
+      if (values.length === 0) return; // 처리할 값이 없음
+      
+      let replacementValue = '';
+      
+      switch (method) {
+        case 'delete':
+          // 결측치가 있는 행들을 제거
+          for (let i = data.length - 1; i >= 1; i--) {
+            if (!data[i][columnIndex] || data[i][columnIndex].trim() === '') {
+              data.splice(i, 1);
+            }
+          }
+          return;
+          
+        case 'mean':
+          // 숫자형 데이터인지 확인
+          const numericValues = values.filter(v => !isNaN(parseFloat(v))).map(v => parseFloat(v));
+          if (numericValues.length > 0) {
+            const mean = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+            replacementValue = mean.toFixed(2);
+          } else {
+            // 숫자가 아니면 최빈값 사용
+            replacementValue = getMode(values);
+          }
+          break;
+          
+        case 'mode':
+          replacementValue = getMode(values);
+          break;
+      }
+      
+      // 결측치를 대체값으로 교체
+      for (let i = 1; i < data.length; i++) {
+        if (!data[i][columnIndex] || data[i][columnIndex].trim() === '') {
+          data[i][columnIndex] = replacementValue;
+        }
+      }
+    }
+    
+    function getMode(values) {
+      const frequency = {};
+      let maxFreq = 0;
+      let mode = values[0];
+      
+      values.forEach(value => {
+        frequency[value] = (frequency[value] || 0) + 1;
+        if (frequency[value] > maxFreq) {
+          maxFreq = frequency[value];
+          mode = value;
+        }
+      });
+      
+      return mode;
+    }
+
+    // 이벤트 리스너들
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded 이벤트 발생');
+      
+      // 파일 업로드 이벤트 리스너
+      document.getElementById('fileUpload').addEventListener('click', () => {
+        console.log('파일 업로드 클릭됨');
+        document.getElementById('csvFile').click();
+      });
+
+      document.getElementById('csvFile').addEventListener('change', (e) => {
+        console.log('파일 선택됨');
+        const file = e.target.files[0];
+        if (file) {
+          console.log('파일 정보:', file.name, file.type, file.size);
+          handleFileUpload(file);
+        }
+      });
+
+      // 드래그 앤 드롭 기능
+      const fileUpload = document.getElementById('fileUpload');
+      
+      fileUpload.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUpload.classList.add('dragover');
+      });
+
+      fileUpload.addEventListener('dragleave', () => {
+        fileUpload.classList.remove('dragover');
+      });
+
+      fileUpload.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUpload.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        console.log('드롭된 파일들:', files);
+        
+        if (files.length > 0) {
+          const file = files[0];
+          console.log('드롭된 파일:', file.name, file.type, file.size);
+          
+          // 파일 타입 체크 개선 (확장자도 확인)
+          const isCSV = file.type === 'text/csv' || 
+                       file.name.toLowerCase().endsWith('.csv') ||
+                       file.type === 'application/vnd.ms-excel' ||
+                       file.type === 'application/csv';
+          
+          if (isCSV) {
+            handleFileUpload(file);
+          } else {
+            alert('CSV 파일만 업로드 가능합니다. (파일명: ' + file.name + ', 타입: ' + file.type + ')');
+          }
+        }
+      });
+      
+      console.log('이벤트 리스너 설정 완료');
+    });
+  </script>
+</body>
+</html> 

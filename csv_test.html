@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV 테스트</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .file-upload {
+      border: 2px dashed #ccc;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    .file-upload:hover {
+      border-color: #007bff;
+      background-color: #f8f9fa;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e9ecef;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 CSV 파일 테스트</h1>
+    <p>CSV 파일을 업로드하여 데이터를 확인해보세요.</p>
+    
+    <div class="file-upload" id="fileUpload">
+      <p>📁 CSV 파일을 클릭하거나 드래그하여 업로드</p>
+      <input type="file" id="csvFile" accept=".csv" style="display: none;">
+    </div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script>
+    console.log('스크립트 로드됨');
+    
+    // 파일 업로드 이벤트
+    document.getElementById('fileUpload').addEventListener('click', function() {
+      console.log('파일 업로드 클릭됨');
+      document.getElementById('csvFile').click();
+    });
+    
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+      console.log('파일 선택됨');
+      const file = e.target.files[0];
+      if (file) {
+        console.log('파일 정보:', file.name, file.size, file.type);
+        processFile(file);
+      }
+    });
+    
+    // 드래그 앤 드롭
+    const fileUpload = document.getElementById('fileUpload');
+    
+    fileUpload.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      fileUpload.style.borderColor = '#007bff';
+      fileUpload.style.backgroundColor = '#f8f9fa';
+    });
+    
+    fileUpload.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      fileUpload.style.borderColor = '#ccc';
+      fileUpload.style.backgroundColor = 'white';
+    });
+    
+    fileUpload.addEventListener('drop', function(e) {
+      e.preventDefault();
+      fileUpload.style.borderColor = '#ccc';
+      fileUpload.style.backgroundColor = 'white';
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        console.log('드롭된 파일:', files[0].name);
+        processFile(files[0]);
+      }
+    });
+    
+    function processFile(file) {
+      console.log('파일 처리 시작:', file.name);
+      
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '파일을 읽는 중...';
+      
+      // 간단한 텍스트 읽기
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        console.log('파일 읽기 완료');
+        const content = e.target.result;
+        console.log('파일 내용 길이:', content.length);
+        console.log('파일 내용 처음 200자:', content.substring(0, 200));
+        
+        // Papa Parse로 파싱
+        Papa.parse(content, {
+          complete: function(results) {
+            console.log('파싱 완료:', results);
+            
+            if (results.errors.length > 0) {
+              console.log('파싱 오류:', results.errors);
+              resultDiv.innerHTML = '<div class="error">파싱 오류: ' + JSON.stringify(results.errors) + '</div>';
+              return;
+            }
+            
+            if (results.data.length === 0) {
+              resultDiv.innerHTML = '<div class="error">데이터가 없습니다.</div>';
+              return;
+            }
+            
+            // 결과 표시
+            let output = '<div class="success">파일 파싱 성공!</div>\n';
+            output += '총 행 수: ' + results.data.length + '\n';
+            output += '첫 번째 행 (헤더): ' + results.data[0].join(', ') + '\n\n';
+            
+            // 처음 5행만 표시
+            output += '처음 5행:\n';
+            for (let i = 0; i < Math.min(5, results.data.length); i++) {
+              output += '행 ' + i + ': ' + results.data[i].join(', ') + '\n';
+            }
+            
+            resultDiv.innerHTML = output;
+          },
+          error: function(error) {
+            console.log('Papa Parse 오류:', error);
+            resultDiv.innerHTML = '<div class="error">파싱 오류: ' + error.message + '</div>';
+          }
+        });
+      };
+      
+      reader.onerror = function() {
+        console.log('파일 읽기 오류');
+        resultDiv.innerHTML = '<div class="error">파일을 읽을 수 없습니다.</div>';
+      };
+      
+      reader.readAsText(file, 'UTF-8');
+    }
+  </script>
+</body>
+</html> 
