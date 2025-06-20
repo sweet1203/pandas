@@ -372,6 +372,7 @@
   <script>
     let globalData = null; // 전역 변수로 데이터 저장
     let globalInfoData = null;
+    let originalData = null; // 원본 데이터 보존
 
     function calculateInfo(data) {
       const info = {
@@ -690,10 +691,7 @@
       const infoData = calculateInfo(data);
       html += displayInfoResult(infoData);
       
-      // 결측치 분석 결과
-      html += displayMissingDataResult(missingData);
-      
-      // Describe 결과
+      // Describe 결과 (원본 데이터 분석)
       if (Object.keys(describeData).length === 0) {
         html += `
           <div class="error">
@@ -713,6 +711,9 @@
       } else {
         html += displayDescribeResult(describeData);
       }
+      
+      // 결측치 분석 결과 (데이터 분석 결과 아래로 이동)
+      html += displayMissingDataResult(missingData);
       
       resultDiv.innerHTML = html;
       
@@ -788,7 +789,7 @@
       }
       
       // 현재 데이터로 결측치 처리
-      const processedData = processMissingData(globalData, selectedColumn, selectedMethod, customValue);
+      const processedData = processMissingData(originalData, selectedColumn, selectedMethod, customValue);
       
       // 데이터가 비어있는지 확인
       if (processedData.length <= 1) {
@@ -804,7 +805,7 @@
       const missingData = calculateMissingData(processedData);
       
       // 결과 표시 업데이트
-      displayAllResults(describeData, missingData, processedData);
+      displayProcessedResults(globalData, processedData, selectedColumn, selectedMethod, customValue);
       
       // 처리 완료 메시지
       const methodNames = {
@@ -818,6 +819,113 @@
         globalData[0][parseInt(selectedColumn)];
       
       alert(`${columnName}에 대해 ${methodNames[selectedMethod]} 처리가 완료되었습니다.`);
+    }
+
+    // 결측치 처리 후 새로운 분석 결과 표시 함수
+    function displayProcessedResults(originalData, processedData, selectedColumn, selectedMethod, customValue) {
+      const resultDiv = document.getElementById('analysisResult');
+      
+      // 처리된 데이터로 새로운 분석 수행
+      processedData._numericColumnsCache = null;
+      const processedDescribeData = calculateDescribe(processedData);
+      const processedMissingData = calculateMissingData(processedData);
+      const processedInfoData = calculateInfo(processedData);
+      
+      // 원본 데이터 분석 결과
+      const originalDescribeData = calculateDescribe(originalData);
+      const originalMissingData = calculateMissingData(originalData);
+      const originalInfoData = calculateInfo(originalData);
+      
+      let html = '';
+      
+      // 원본 데이터 Info 결과
+      html += '<h3><i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>📈 원본 데이터 정보</h3>';
+      html += displayInfoResult(originalInfoData);
+      
+      // 원본 데이터 Describe 결과
+      if (Object.keys(originalDescribeData).length === 0) {
+        html += `
+          <div class="error">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            원본 데이터에 분석할 수 있는 숫자형 데이터가 없습니다.
+          </div>
+        `;
+      } else {
+        html += '<h3><i class="fas fa-chart-bar" style="margin-right: 0.5rem;"></i>📊 원본 데이터 분석 결과</h3>';
+        html += displayDescribeResult(originalDescribeData);
+      }
+      
+      // 원본 데이터 결측치 분석
+      html += '<h3><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>🔍 원본 데이터 결측치 분석</h3>';
+      html += displayMissingDataResult(originalMissingData);
+      
+      // 결측치 처리 정보
+      const methodNames = {
+        'delete': '결측치 삭제',
+        'mean': '평균값 대체',
+        'mode': '최빈값 대체',
+        'custom': `사용자 지정 값 (${customValue})`
+      };
+      
+      const columnName = selectedColumn === '' ? '전체 열' : 
+        originalData[0][parseInt(selectedColumn)];
+      
+      html += `
+        <div style="background: #e8f5e8; padding: 1.5rem; border-radius: 10px; border: 1px solid #4caf50; margin: 2rem 0;">
+          <h3 style="color: #2e7d32; margin-top: 0; margin-bottom: 1rem;">
+            <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>✅ 결측치 처리 완료
+          </h3>
+          <div style="color: #2e7d32; font-weight: bold; margin-bottom: 1rem;">
+            처리 대상: ${columnName}<br>
+            처리 방법: ${methodNames[selectedMethod]}<br>
+            처리된 행 수: ${originalData.length - 1} → ${processedData.length - 1}
+          </div>
+          <div style="font-size: 0.9rem; color: #2e7d32;">
+            💡 아래에서 처리 후 데이터 분석 결과를 확인하세요
+          </div>
+        </div>
+      `;
+      
+      // 처리된 데이터 Info 결과
+      html += '<h3><i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>📈 처리 후 데이터 정보</h3>';
+      html += displayInfoResult(processedInfoData);
+      
+      // 처리된 데이터 Describe 결과
+      if (Object.keys(processedDescribeData).length === 0) {
+        html += `
+          <div class="error">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            처리 후 데이터에 분석할 수 있는 숫자형 데이터가 없습니다.
+          </div>
+        `;
+      } else {
+        html += '<h3><i class="fas fa-chart-bar" style="margin-right: 0.5rem;"></i>📊 처리 후 데이터 분석 결과</h3>';
+        html += displayDescribeResult(processedDescribeData);
+      }
+      
+      // 처리된 데이터 결측치 분석
+      html += '<h3><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>🔍 처리 후 데이터 결측치 분석</h3>';
+      html += displayMissingDataResult(processedMissingData);
+      
+      resultDiv.innerHTML = html;
+      
+      // PDF 출력 버튼 추가
+      if (Object.keys(processedDescribeData).length > 0 || processedMissingData.columns.some(col => col.nullCount > 0)) {
+        resultDiv.innerHTML += `
+          <div class="pdf-export">
+            <button onclick="exportToPDF()">
+              <i class="fas fa-file-pdf" style="margin-right: 0.5rem;"></i>
+              📄 PDF로 출력하기
+            </button>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+              💡 브라우저의 인쇄 대화상자에서 "대상"을 "PDF로 저장"으로 설정하세요
+            </p>
+          </div>
+        `;
+      }
+      
+      // 이벤트 리스너 설정
+      setupEventListeners();
     }
 
     function handleFileUpload(file) {
@@ -892,6 +1000,8 @@
               console.log('마지막 결과 사용:', lastResults.data.length, '행');
               // 파일명 저장
               lastResults.data._fileName = file.name;
+              // 원본 데이터 보존
+              originalData = JSON.parse(JSON.stringify(lastResults.data));
               // 데이터 캐시 초기화
               lastResults.data._numericColumnsCache = null;
               const describeData = calculateDescribe(lastResults.data);
@@ -954,6 +1064,9 @@
                 
                 // 파일명 저장
                 results.data._fileName = file.name;
+                
+                // 원본 데이터 보존
+                originalData = JSON.parse(JSON.stringify(results.data));
                 
                 // 데이터 캐시 초기화
                 results.data._numericColumnsCache = null;
