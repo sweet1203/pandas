@@ -184,6 +184,103 @@
       margin-bottom: 1rem;
     }
     
+    /* PDF 출력 버튼 스타일 */
+    .pdf-export {
+      text-align: center;
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #f8f9ff;
+      border-radius: 10px;
+      border: 1px solid #e8ecff;
+    }
+    
+    .pdf-export button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .pdf-export button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .pdf-export button:active {
+      transform: translateY(0);
+    }
+    
+    /* 인쇄 스타일 */
+    @media print {
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      .container {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+      }
+      
+      .header {
+        background: #667eea !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .file-upload,
+      .info-box,
+      .pdf-export {
+        display: none !important;
+      }
+      
+      .content {
+        padding: 1rem !important;
+      }
+      
+      .analysis-result {
+        display: block !important;
+        background: white !important;
+        border: none !important;
+        padding: 0 !important;
+      }
+      
+      .analysis-result table {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+      }
+      
+      .analysis-result th {
+        background: #667eea !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .table-container {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+      }
+      
+      /* 페이지 나누기 방지 */
+      .analysis-result h3 {
+        page-break-after: avoid;
+      }
+      
+      .analysis-result table {
+        page-break-inside: avoid;
+      }
+    }
+    
     @media (max-width: 768px) {
       .container {
         margin: 0;
@@ -596,6 +693,21 @@
       
       resultDiv.innerHTML = html;
       
+      // PDF 출력 버튼 추가
+      if (Object.keys(describeData).length > 0 || missingData.columns.some(col => col.nullCount > 0)) {
+        resultDiv.innerHTML += `
+          <div class="pdf-export">
+            <button onclick="exportToPDF()">
+              <i class="fas fa-file-pdf" style="margin-right: 0.5rem;"></i>
+              📄 PDF로 출력하기
+            </button>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+              💡 브라우저의 인쇄 대화상자에서 "대상"을 "PDF로 저장"으로 설정하세요
+            </p>
+          </div>
+        `;
+      }
+      
       // 이벤트 리스너 한 번만 설정
       setupEventListeners();
     }
@@ -723,6 +835,8 @@
             // 모든 인코딩 시도 후에도 실패하면 마지막 결과를 사용
             if (lastResults && lastResults.data.length > 0) {
               console.log('마지막 결과 사용:', lastResults.data.length, '행');
+              // 파일명 저장
+              lastResults.data._fileName = file.name;
               // 데이터 캐시 초기화
               lastResults.data._numericColumnsCache = null;
               const describeData = calculateDescribe(lastResults.data);
@@ -782,6 +896,9 @@
                 // 성공적으로 파싱된 경우
                 console.log('파싱 성공!');
                 loadingIndicator.style.display = 'none';
+                
+                // 파일명 저장
+                results.data._fileName = file.name;
                 
                 // 데이터 캐시 초기화
                 results.data._numericColumnsCache = null;
@@ -900,6 +1017,164 @@
       });
       
       return mode;
+    }
+
+    // PDF 출력 함수
+    function exportToPDF() {
+      // 현재 날짜와 시간을 파일명에 포함
+      const now = new Date();
+      const dateStr = now.getFullYear() + 
+                     String(now.getMonth() + 1).padStart(2, '0') + 
+                     String(now.getDate()).padStart(2, '0') + '_' +
+                     String(now.getHours()).padStart(2, '0') + 
+                     String(now.getMinutes()).padStart(2, '0');
+      
+      // 파일명 설정 (업로드된 파일명이 있으면 사용)
+      let fileName = 'CSV_분석결과';
+      if (globalData && globalData._fileName) {
+        fileName = globalData._fileName.replace('.csv', '') + '_분석결과';
+      }
+      fileName += '_' + dateStr;
+      
+      // 인쇄 대화상자 열기
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${fileName}</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', '맑은 고딕', 'Noto Sans KR', sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #333;
+            }
+            
+            .container {
+              max-width: 100%;
+              background: white;
+            }
+            
+            .header {
+              background: #667eea;
+              color: white;
+              padding: 2rem;
+              text-align: center;
+              margin-bottom: 2rem;
+            }
+            
+            .header h1 {
+              margin: 0;
+              font-size: 2rem;
+              margin-bottom: 0.5rem;
+            }
+            
+            .header p {
+              margin: 0;
+              opacity: 0.9;
+            }
+            
+            .analysis-result {
+              background: white;
+              padding: 0;
+            }
+            
+            .analysis-result h3 {
+              color: #667eea;
+              margin-top: 0;
+              margin-bottom: 1rem;
+              text-align: center;
+              page-break-after: avoid;
+            }
+            
+            .analysis-result table {
+              width: 100%;
+              border-collapse: collapse;
+              background: white;
+              border: 1px solid #ddd;
+              margin-bottom: 1rem;
+              page-break-inside: avoid;
+            }
+            
+            .analysis-result th {
+              background: #667eea;
+              color: white;
+              padding: 12px 8px;
+              text-align: center;
+              font-weight: 600;
+            }
+            
+            .analysis-result td {
+              padding: 10px 8px;
+              text-align: center;
+              border-bottom: 1px solid #eee;
+            }
+            
+            .analysis-result tr:nth-child(even) {
+              background-color: #f8f9ff;
+            }
+            
+            .table-container {
+              border: 1px solid #ddd;
+              margin-bottom: 1rem;
+            }
+            
+            .error {
+              background: #ffe6e6;
+              color: #d63031;
+              padding: 1rem;
+              border-radius: 8px;
+              border: 1px solid #ff7675;
+              text-align: center;
+            }
+            
+            @media print {
+              body {
+                margin: 0;
+                padding: 10px;
+              }
+              
+              .header {
+                background: #667eea !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .analysis-result th {
+                background: #667eea !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📊 CSV 데이터 분석 결과</h1>
+              <p>생성일시: ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분</p>
+            </div>
+            <div class="analysis-result">
+              ${document.getElementById('analysisResult').innerHTML}
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      
+      // 잠시 후 인쇄 대화상자 열기
+      setTimeout(() => {
+        printWindow.print();
+        // 인쇄 후 창 닫기 (사용자가 취소할 수도 있으므로 바로 닫지 않음)
+        printWindow.onafterprint = function() {
+          printWindow.close();
+        };
+      }, 500);
     }
 
     // 이벤트 리스너들
