@@ -417,15 +417,24 @@
         data._numericColumnsCache = [];
         data[0].forEach((header, index) => {
           let isNumeric = true;
-          // 샘플링으로 빠른 체크 (처음 100개 행만 확인)
-          const sampleSize = Math.min(100, data.length - 1);
-          for (let i = 1; i <= sampleSize; i++) {
-            if (data[i][index] && isNaN(parseFloat(data[i][index]))) {
-              isNumeric = false;
-              break;
+          let hasValidNumericData = false;
+          
+          // 전체 데이터를 확인하여 숫자형 여부 판단
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][index] && data[i][index].trim() !== '') {
+              const numValue = parseFloat(data[i][index]);
+              if (!isNaN(numValue)) {
+                hasValidNumericData = true;
+              } else {
+                // 숫자가 아닌 값이 있으면 해당 컬럼은 숫자형이 아님
+                isNumeric = false;
+                break;
+              }
             }
           }
-          if (isNumeric) {
+          
+          // 유효한 숫자 데이터가 있는 컬럼만 추가
+          if (isNumeric && hasValidNumericData) {
             data._numericColumnsCache.push(index);
           }
         });
@@ -589,17 +598,22 @@
       
       html += '</select>';
       html += '<label for="missingMethodSelect" style="font-weight: bold;">처리 방법:</label>';
-      html += '<select id="missingMethodSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;">';
+      html += '<select id="missingMethodSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;" onchange="toggleCustomValueInput()">';
       html += '<option value="delete">결측치 삭제</option>';
       html += '<option value="mean">평균값 대체</option>';
       html += '<option value="mode">최빈값 대체</option>';
+      html += '<option value="custom">사용자 지정 값</option>';
       html += '</select>';
+      html += '<div id="customValueContainer" style="display: none; flex: 1; min-width: 200px;">';
+      html += '<label for="customValueInput" style="font-weight: bold; margin-right: 0.5rem;">지정 값:</label>';
+      html += '<input type="text" id="customValueInput" placeholder="예: 0, N/A, 빈칸" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100%;">';
+      html += '</div>';
       html += '<button id="processMissing" style="padding: 0.5rem 1rem; background: #856404; color: white; border: none; border-radius: 4px; cursor: pointer;">';
       html += '<i class="fas fa-magic" style="margin-right: 0.5rem;"></i>처리';
       html += '</button>';
       html += '</div>';
       html += '<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #856404;">';
-      html += '<strong>참고:</strong> 결측치가 있는 열만 선택 가능합니다.';
+      html += '<strong>참고:</strong> 결측치가 있는 열만 선택 가능합니다. 사용자 지정 값은 모든 결측치를 동일한 값으로 대체합니다.';
       html += '</div>';
       html += '</div>';
       
@@ -685,6 +699,15 @@
           <div class="error">
             <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
             분석할 수 있는 숫자형 데이터가 없습니다.
+            <br><br>
+            <strong>가능한 원인:</strong>
+            <ul style="text-align: left; margin: 0.5rem 0;">
+              <li>모든 컬럼이 문자열 데이터입니다</li>
+              <li>결측치 처리 후 숫자형 컬럼이 문자열로 변경되었습니다</li>
+              <li>결측치 삭제로 인해 모든 데이터가 제거되었습니다</li>
+            </ul>
+            <br>
+            💡 <strong>해결 방법:</strong> 다른 결측치 처리 방법을 시도하거나, 원본 데이터를 다시 업로드해보세요.
           </div>
         `;
       } else {
@@ -726,6 +749,17 @@
         analyzeButton.setAttribute('data-listener-added', 'true');
         analyzeButton.addEventListener('click', analyzeSelectedColumn);
       }
+      
+      // 사용자 지정 값 입력 필드 이벤트 리스너
+      const customValueInput = document.getElementById('customValueInput');
+      if (customValueInput && !customValueInput.hasAttribute('data-listener-added')) {
+        customValueInput.setAttribute('data-listener-added', 'true');
+        customValueInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            handleProcessMissingClick();
+          }
+        });
+      }
     }
     
     function handleProcessMissingClick() {
@@ -742,8 +776,28 @@
         return;
       }
       
+      // 사용자 지정 값 확인
+      let customValue = null;
+      if (selectedMethod === 'custom') {
+        const customValueInput = document.getElementById('customValueInput');
+        if (!customValueInput || !customValueInput.value.trim()) {
+          alert('사용자 지정 값을 입력해주세요.');
+          return;
+        }
+        customValue = customValueInput.value.trim();
+      }
+      
       // 현재 데이터로 결측치 처리
-      const processedData = processMissingData(globalData, selectedColumn, selectedMethod);
+      const processedData = processMissingData(globalData, selectedColumn, selectedMethod, customValue);
+      
+      // 데이터가 비어있는지 확인
+      if (processedData.length <= 1) {
+        alert('결측치 처리 후 분석할 데이터가 없습니다. 다른 처리 방법을 시도해주세요.');
+        return;
+      }
+      
+      // 캐시 초기화 (결측치 처리 후 데이터가 변경되었으므로)
+      processedData._numericColumnsCache = null;
       
       // 처리된 데이터로 분석 결과 업데이트
       const describeData = calculateDescribe(processedData);
@@ -756,7 +810,8 @@
       const methodNames = {
         'delete': '결측치 삭제',
         'mean': '평균값 대체',
-        'mode': '최빈값 대체'
+        'mode': '최빈값 대체',
+        'custom': `사용자 지정 값 (${customValue})`
       };
       
       const columnName = selectedColumn === '' ? '전체 열' : 
@@ -938,23 +993,23 @@
     }
 
     // 결측치 처리 함수들
-    function processMissingData(data, columnIndex, method) {
+    function processMissingData(data, columnIndex, method, customValue = null) {
       const processedData = JSON.parse(JSON.stringify(data)); // 깊은 복사
       
       if (columnIndex === '') {
         // 전체 열 처리
         for (let col = 0; col < processedData[0].length; col++) {
-          processColumn(processedData, col, method);
+          processColumn(processedData, col, method, customValue);
         }
       } else {
         // 특정 열 처리
-        processColumn(processedData, parseInt(columnIndex), method);
+        processColumn(processedData, parseInt(columnIndex), method, customValue);
       }
       
       return processedData;
     }
     
-    function processColumn(data, columnIndex, method) {
+    function processColumn(data, columnIndex, method, customValue = null) {
       const values = [];
       
       // 유효한 값들 수집
@@ -993,6 +1048,16 @@
         case 'mode':
           replacementValue = getMode(values);
           break;
+          
+        case 'custom':
+          // 사용자 지정 값 사용
+          if (customValue !== null) {
+            replacementValue = customValue;
+          } else {
+            // 기본값으로 빈 문자열 사용
+            replacementValue = '';
+          }
+          break;
       }
       
       // 결측치를 대체값으로 교체
@@ -1017,6 +1082,23 @@
       });
       
       return mode;
+    }
+
+    // 사용자 지정 값 입력 필드 토글 함수
+    function toggleCustomValueInput() {
+      const methodSelect = document.getElementById('missingMethodSelect');
+      const customValueContainer = document.getElementById('customValueContainer');
+      const customValueInput = document.getElementById('customValueInput');
+      
+      if (methodSelect && customValueContainer) {
+        if (methodSelect.value === 'custom') {
+          customValueContainer.style.display = 'flex';
+          customValueInput.focus();
+        } else {
+          customValueContainer.style.display = 'none';
+          customValueInput.value = '';
+        }
+      }
     }
 
     // PDF 출력 함수
