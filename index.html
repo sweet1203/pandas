@@ -386,15 +386,16 @@
         let numericCount = 0;
         
         for (let i = 1; i < data.length; i++) {
-          if (data[i][index] && data[i][index].trim() !== '') {
+          const cellValue = data[i][index];
+          if (cellValue && cellValue.toString().trim() !== '') {
             nonNullCount++;
-            if (!isNaN(parseFloat(data[i][index]))) {
+            if (!isNaN(parseFloat(cellValue))) {
               numericCount++;
             }
           }
         }
 
-        const dtype = numericCount === nonNullCount ? 'float64' : 'object';
+        const dtype = (nonNullCount > 0 && (numericCount / nonNullCount) >= 0.5) ? 'float64' : 'object';
         
         info.columns.push({
           name: header,
@@ -410,50 +411,113 @@
     }
 
     function calculateDescribe(data, selectedColumn = null) {
+      console.log('=== calculateDescribe 함수 시작 ===');
+      console.log('입력 데이터:', data ? data.length : 'null', '행');
+      console.log('선택된 열:', selectedColumn);
+      
       const numericColumns = [];
       const results = {};
 
       // 숫자형 컬럼 찾기 (캐싱 활용)
       if (!data._numericColumnsCache) {
+        console.log('캐시가 없어서 새로 계산합니다.');
         data._numericColumnsCache = [];
+        console.log('=== 숫자형 컬럼 찾기 시작 ===');
+        console.log('총 컬럼 수:', data[0].length);
+        console.log('총 행 수:', data.length);
+        console.log('헤더 행:', data[0]);
+        
+        if (!data[0] || !Array.isArray(data[0])) {
+          console.error('❌ data[0]이 배열이 아닙니다:', data[0]);
+          return results;
+        }
+        
         data[0].forEach((header, index) => {
-          let isNumeric = true;
-          let hasValidNumericData = false;
+          let numericCount = 0;
+          let totalValidCount = 0;
+          
+          console.log(`\n--- 컬럼 ${index}: ${header} 분석 ---`);
           
           // 전체 데이터를 확인하여 숫자형 여부 판단
           for (let i = 1; i < data.length; i++) {
-            if (data[i][index] && data[i][index].trim() !== '') {
-              const numValue = parseFloat(data[i][index]);
+            const cellValue = data[i][index];
+            if (cellValue && cellValue.toString().trim() !== '') {
+              totalValidCount++;
+              const numValue = parseFloat(cellValue);
               if (!isNaN(numValue)) {
-                hasValidNumericData = true;
+                numericCount++;
+                if (numericCount <= 3) {
+                  console.log(`  행 ${i}: "${cellValue}" → ${numValue} (숫자)`);
+                }
               } else {
-                // 숫자가 아닌 값이 있으면 해당 컬럼은 숫자형이 아님
-                isNumeric = false;
-                break;
+                if (totalValidCount - numericCount <= 3) {
+                  console.log(`  행 ${i}: "${cellValue}" → 숫자 아님`);
+                }
               }
             }
           }
           
-          // 유효한 숫자 데이터가 있는 컬럼만 추가
-          if (isNumeric && hasValidNumericData) {
+          console.log(`컬럼 ${index} 결과: 숫자 ${numericCount}개, 총 유효값 ${totalValidCount}개`);
+          
+          // 유효한 값 중 50% 이상이 숫자인 경우 숫자형 컬럼으로 인식
+          if (totalValidCount > 0 && (numericCount / totalValidCount) >= 0.5) {
             data._numericColumnsCache.push(index);
+            console.log(`✅ 컬럼 ${index} (${header}): 숫자형으로 인식 (${numericCount}/${totalValidCount})`);
+          } else {
+            console.log(`❌ 컬럼 ${index} (${header}): 문자열형으로 인식 (${numericCount}/${totalValidCount})`);
           }
         });
+        
+        console.log('=== 숫자형 컬럼 찾기 완료 ===');
+        console.log('숫자형 컬럼 인덱스:', data._numericColumnsCache);
       }
 
-      const columnsToProcess = selectedColumn !== null ? [parseInt(selectedColumn)] : data._numericColumnsCache;
+      // 특정 열을 선택한 경우와 전체 열 분석을 구분
+      let columnsToProcess = [];
+      if (selectedColumn !== null && selectedColumn !== '') {
+        // 특정 열을 선택한 경우, 해당 열만 분석
+        const columnIndex = parseInt(selectedColumn);
+        if (!isNaN(columnIndex) && columnIndex >= 0 && columnIndex < data[0].length) {
+          columnsToProcess = [columnIndex];
+          console.log(`특정 열 ${columnIndex} 선택됨: ${data[0][columnIndex]}`);
+        } else {
+          console.log(`잘못된 열 인덱스: ${selectedColumn}, 전체 열 분석으로 변경`);
+          columnsToProcess = data._numericColumnsCache;
+        }
+      } else {
+        // 전체 열 분석의 경우, 숫자형 컬럼만 분석
+        columnsToProcess = data._numericColumnsCache;
+        console.log('전체 열 분석 모드');
+      }
 
-      // 각 숫자형 컬럼에 대해 describe 계산
+      // 각 선택된 컬럼에 대해 describe 계산
       columnsToProcess.forEach(colIndex => {
         const columnName = data[0][colIndex];
         const values = [];
         
+        console.log(`컬럼 ${colIndex} (${columnName}) 분석 시작`);
+        
+        // 숫자형 데이터 수집
         for (let i = 1; i < data.length; i++) {
-          if (data[i][colIndex] && !isNaN(parseFloat(data[i][colIndex]))) {
-            values.push(parseFloat(data[i][colIndex]));
+          const cellValue = data[i][colIndex];
+          if (cellValue && cellValue.toString().trim() !== '') {
+            const numValue = parseFloat(cellValue);
+            if (!isNaN(numValue)) {
+              values.push(numValue);
+              if (values.length <= 3) {
+                console.log(`  행 ${i}: "${cellValue}" → ${numValue} (숫자로 변환됨)`);
+              }
+            } else {
+              if (values.length <= 3) {
+                console.log(`  행 ${i}: "${cellValue}" → 숫자 변환 실패`);
+              }
+            }
           }
         }
 
+        console.log(`컬럼 ${columnName}: 총 ${values.length}개의 숫자 데이터 수집됨`);
+
+        // 숫자형 데이터가 있는 경우에만 결과 추가
         if (values.length > 0) {
           values.sort((a, b) => a - b);
           const count = values.length;
@@ -470,6 +534,10 @@
             '75%': values[Math.floor(count * 0.75)].toFixed(2),
             max: values[values.length - 1].toFixed(2)
           };
+          
+          console.log(`컬럼 ${columnName} 분석 완료: ${count}개 데이터`);
+        } else {
+          console.log(`컬럼 ${columnName}: 숫자 데이터 없음`);
         }
       });
 
@@ -477,23 +545,54 @@
     }
 
     function calculateMissingData(data) {
+      // 마지막 행이 완전히 비어있으면 제거
+      let cleanData = [...data];
+      if (cleanData.length > 1) {
+        const lastRow = cleanData[cleanData.length - 1];
+        const isLastRowEmpty = lastRow.every(cell => cell === null || cell === undefined || cell === '' || (typeof cell === 'string' && cell.trim() === ''));
+        if (isLastRowEmpty) {
+          cleanData = cleanData.slice(0, -1);
+          console.log('마지막 빈 행 제거됨');
+        }
+      }
+
       const missingInfo = {
-        totalRows: data.length - 1,
-        totalColumns: data[0].length,
+        totalRows: cleanData.length - 1,
+        totalColumns: cleanData[0].length,
         columns: []
       };
 
-      data[0].forEach((header, index) => {
+      let totalNulls = 0;
+      let totalCells = 0;
+
+      console.log('=== 결측치 분석 디버깅 ===');
+      console.log('원본 행 수:', data.length - 1);
+      console.log('정리된 행 수:', missingInfo.totalRows);
+      console.log('총 열 수:', missingInfo.totalColumns);
+
+      cleanData[0].forEach((header, index) => {
         let nullCount = 0;
         let nonNullCount = 0;
         
-        for (let i = 1; i < data.length; i++) {
-          if (data[i][index] && data[i][index].trim() !== '') {
-            nonNullCount++;
-          } else {
+        console.log(`\n--- 열 ${index}: ${header} ---`);
+        
+        for (let i = 1; i < cleanData.length; i++) {
+          const value = cleanData[i][index];
+          
+          // 결측치 판단: null, undefined, 빈 문자열, 공백만 있는 문자열
+          if (value === null || value === undefined || value === '' || (typeof value === 'string' && value.trim() === '')) {
             nullCount++;
+            console.log(`행 ${i}: 값="${value}" → 결측치로 판단 (nullCount: ${nullCount})`);
+          } else {
+            nonNullCount++;
+            console.log(`행 ${i}: 값="${value}" → 유효한 값으로 판단 (nonNullCount: ${nonNullCount})`);
           }
         }
+
+        console.log(`최종 결과: nullCount=${nullCount}, nonNullCount=${nonNullCount}`);
+
+        totalNulls += nullCount;
+        totalCells += missingInfo.totalRows;
 
         const nullPercentage = ((nullCount / missingInfo.totalRows) * 100).toFixed(2);
         
@@ -501,9 +600,17 @@
           name: header,
           nullCount: nullCount,
           nonNullCount: nonNullCount,
-          nullPercentage: nullPercentage
+          nullPercentage: nullPercentage,
+          totalCount: missingInfo.totalRows
         });
       });
+
+      missingInfo.totalNulls = totalNulls;
+      missingInfo.totalCells = totalCells;
+
+      console.log(`\n=== 전체 결과 ===`);
+      console.log(`전체 결측치: ${totalNulls} / ${totalCells}`);
+      console.log('=== 디버깅 끝 ===\n');
 
       return missingInfo;
     }
@@ -542,81 +649,76 @@
       return html;
     }
 
-    function displayMissingDataResult(missingData) {
+    function displayMissingDataResult(missingData, hideProcessingMenu = false) {
       let html = '<h3><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>🔍 결측치 분석</h3>';
-      html += '<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-family: monospace; font-size: 0.9rem;">';
-      html += `<div style="margin-bottom: 0.5rem;"><strong>총 행 수:</strong> ${missingData.totalRows}</div>`;
-      html += `<div style="margin-bottom: 0.5rem;"><strong>총 열 수:</strong> ${missingData.totalColumns}</div>`;
-      
       html += '<div class="table-container">';
-      html += '<table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; min-width: 600px;">';
-      html += '<thead><tr style="border-bottom: 1px solid #ddd;">';
-      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">#</th>';
-      html += '<th style="text-align: left; padding: 4px 8px; font-weight: bold;">Column</th>';
-      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Non-Null</th>';
-      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Null</th>';
-      html += '<th style="text-align: center; padding: 4px 8px; font-weight: bold;">Null %</th>';
-      html += '</tr></thead><tbody>';
+      html += '<table><thead><tr><th>열 번호</th><th>열 이름</th><th>총 개수</th><th>결측치 개수</th><th>결측치 비율</th></tr></thead><tbody>';
       
       missingData.columns.forEach((col, index) => {
-        const nullColor = parseFloat(col.nullPercentage) > 10 ? '#ff6b6b' : '#51cf66';
-        html += '<tr style="border-bottom: 1px solid #eee;">';
-        html += `<td style="padding: 4px 8px;">${index}</td>`;
-        html += `<td style="padding: 4px 8px;">${col.name}</td>`;
-        html += `<td style="padding: 4px 8px; text-align: center; color: #51cf66;">${col.nonNullCount}</td>`;
-        html += `<td style="padding: 4px 8px; text-align: center; color: #ff6b6b;">${col.nullCount}</td>`;
-        html += `<td style="padding: 4px 8px; text-align: center; color: ${nullColor}; font-weight: bold;">${col.nullPercentage}%</td>`;
+        const percentage = ((col.nullCount / col.totalCount) * 100).toFixed(2);
+        const rowClass = col.nullCount > 0 ? 'style="background-color: #fff3cd;"' : '';
+        html += `<tr ${rowClass}>`;
+        html += `<td>${index}</td>`;
+        html += `<td>${col.name}</td>`;
+        html += `<td>${col.totalCount}</td>`;
+        html += `<td>${col.nullCount}</td>`;
+        html += `<td>${percentage}%</td>`;
         html += '</tr>';
       });
       
       html += '</tbody></table>';
       html += '</div>';
       
-      // 전체 결측치 요약
-      const totalNulls = missingData.columns.reduce((sum, col) => sum + col.nullCount, 0);
-      const totalCells = missingData.totalRows * missingData.totalColumns;
+      const totalNulls = missingData.totalNulls;
+      const totalCells = missingData.totalCells;
       const totalNullPercentage = ((totalNulls / totalCells) * 100).toFixed(2);
       
       html += `<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #ddd;">`;
       html += `<strong>전체 결측치:</strong> ${totalNulls} / ${totalCells} (${totalNullPercentage}%)`;
       html += '</div></div>';
       
-      // 결측치 처리 메뉴 추가
-      html += '<div style="background: #fff3cd; padding: 1.5rem; border-radius: 10px; border: 1px solid #ffeaa7; margin-bottom: 1rem;">';
-      html += '<h4 style="color: #856404; margin-bottom: 1rem; margin-top: 0;">';
-      html += '<i class="fas fa-tools" style="margin-right: 0.5rem;"></i>🧹 결측치 처리';
-      html += '</h4>';
-      html += '<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">';
-      html += '<label for="missingColumnSelect" style="font-weight: bold;">처리할 열:</label>';
-      html += '<select id="missingColumnSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">';
-      html += '<option value="">전체 열</option>';
-      
-      missingData.columns.forEach((col, index) => {
-        if (col.nullCount > 0) {
-          html += `<option value="${index}">${index}: ${col.name} (${col.nullCount}개 결측)</option>`;
-        }
-      });
-      
-      html += '</select>';
-      html += '<label for="missingMethodSelect" style="font-weight: bold;">처리 방법:</label>';
-      html += '<select id="missingMethodSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;" onchange="toggleCustomValueInput()">';
-      html += '<option value="delete">결측치 삭제</option>';
-      html += '<option value="mean">평균값 대체</option>';
-      html += '<option value="mode">최빈값 대체</option>';
-      html += '<option value="custom">사용자 지정 값</option>';
-      html += '</select>';
-      html += '<div id="customValueContainer" style="display: none; flex: 1; min-width: 200px;">';
-      html += '<label for="customValueInput" style="font-weight: bold; margin-right: 0.5rem;">지정 값:</label>';
-      html += '<input type="text" id="customValueInput" placeholder="예: 0, N/A, 빈칸" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100%;">';
-      html += '</div>';
-      html += '<button id="processMissing" style="padding: 0.5rem 1rem; background: #856404; color: white; border: none; border-radius: 4px; cursor: pointer;">';
-      html += '<i class="fas fa-magic" style="margin-right: 0.5rem;"></i>처리';
-      html += '</button>';
-      html += '</div>';
-      html += '<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #856404;">';
-      html += '<strong>참고:</strong> 결측치가 있는 열만 선택 가능합니다. 사용자 지정 값은 모든 결측치를 동일한 값으로 대체합니다.';
-      html += '</div>';
-      html += '</div>';
+      // 결측치 처리 메뉴는 hideProcessingMenu가 false일 때만 표시
+      if (!hideProcessingMenu) {
+        html += '<div style="background: #fff3cd; padding: 1.5rem; border-radius: 10px; border: 1px solid #ffeaa7; margin-bottom: 1rem;">';
+        html += '<h4 style="color: #856404; margin-bottom: 1rem; margin-top: 0;">';
+        html += '<i class="fas fa-tools" style="margin-right: 0.5rem;"></i>🧹 결측치 처리';
+        html += '</h4>';
+        html += '<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">';
+        html += '<label for="missingColumnSelect" style="font-weight: bold;">처리할 열:</label>';
+        html += '<select id="missingColumnSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">';
+        html += '<option value="">전체 열</option>';
+        
+        missingData.columns.forEach((col, index) => {
+          if (col.nullCount > 0) {
+            html += `<option value="${index}">${index}: ${col.name} (${col.nullCount}개 결측)</option>`;
+          }
+        });
+        
+        html += '</select>';
+        html += '<label for="missingMethodSelect" style="font-weight: bold;">처리 방법:</label>';
+        html += '<select id="missingMethodSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 150px;" onchange="toggleCustomValueInput()">';
+        html += '<option value="delete">결측치 삭제</option>';
+        html += '<option value="mean">평균값 대체</option>';
+        html += '<option value="mode">최빈값 대체</option>';
+        html += '<option value="custom">사용자 지정 값</option>';
+        html += '<option value="median">중앙값으로 대체</option>';
+        html += '<option value="forward_fill">앞의 값으로 채우기</option>';
+        html += '<option value="backward_fill">뒤의 값으로 채우기</option>';
+        html += '</select>';
+        html += '<div id="customValueContainer" style="display: none; flex: 1; min-width: 200px;">';
+        html += '<label for="customValueInput" style="font-weight: bold; margin-right: 0.5rem;">지정 값:</label>';
+        html += '<input type="text" id="customValueInput" placeholder="예: 0, N/A, 빈칸" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100%;">';
+        html += '</div>';
+        html += '<button id="processMissing" style="padding: 0.5rem 1rem; background: #856404; color: white; border: none; border-radius: 4px; cursor: pointer;">';
+        html += '<i class="fas fa-magic" style="margin-right: 0.5rem;"></i>처리';
+        html += '</button>';
+        html += '</div>';
+        html += '<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #856404;">';
+        html += '<strong>참고:</strong> 결측치가 있는 열만 선택 가능합니다. 사용자 지정 값은 모든 결측치를 동일한 값으로 대체합니다.';
+        html += '<br><strong>🔒 인덱스 열 보호:</strong> 1열(인덱스 열)은 데이터 구분을 위해 결측치 처리에서 제외됩니다.';
+        html += '</div>';
+        html += '</div>';
+      }
       
       return html;
     }
@@ -644,41 +746,9 @@
       html += '</tbody></table>';
       html += '</div>';
       
-      // 열 선택 메뉴 추가
-      html += '<div style="background: #f8f9ff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e8ecff; margin-bottom: 1rem;">';
-      html += '<h4 style="color: #667eea; margin-bottom: 1rem; margin-top: 0;">';
-      html += '<i class="fas fa-filter" style="margin-right: 0.5rem;"></i>📊 특정 열 분석';
-      html += '</h4>';
-      html += '<div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">';
-      html += '<label for="columnSelect" style="font-weight: bold;">열 선택:</label>';
-      html += '<select id="columnSelect" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">';
-      html += '<option value="">전체 열 분석</option>';
-      
-      if (globalData && globalData[0]) {
-        globalData[0].forEach((col, index) => {
-          html += `<option value="${index}">${index}: ${col}</option>`;
-        });
-      }
-      
-      html += '</select>';
-      html += '<button id="analyzeColumn" style="padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">';
-      html += '<i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>분석';
-      html += '</button>';
-      html += '</div>';
-      html += '</div>';
-      
       return html;
     }
     
-    function analyzeSelectedColumn() {
-      const selectedColumn = document.getElementById('columnSelect').value;
-      if (!globalData) return;
-      
-      const describeData = calculateDescribe(globalData, selectedColumn);
-      const missingData = calculateMissingData(globalData);
-      displayAllResults(describeData, missingData, globalData);
-    }
-
     function displayAllResults(describeData, missingData, data) {
       globalData = data; // 전역 변수에 데이터 저장
       
@@ -737,43 +807,72 @@
     }
     
     function setupEventListeners() {
+      console.log('이벤트 리스너 설정 시작');
+      
       // 결측치 처리 이벤트 리스너
       const processButton = document.getElementById('processMissing');
-      if (processButton && !processButton.hasAttribute('data-listener-added')) {
-        processButton.setAttribute('data-listener-added', 'true');
+      if (processButton) {
+        // 기존 리스너 제거 후 새로 추가
+        processButton.removeEventListener('click', handleProcessMissingClick);
         processButton.addEventListener('click', handleProcessMissingClick);
-      }
-      
-      // 특정 열 분석 이벤트 리스너
-      const analyzeButton = document.getElementById('analyzeColumn');
-      if (analyzeButton && !analyzeButton.hasAttribute('data-listener-added')) {
-        analyzeButton.setAttribute('data-listener-added', 'true');
-        analyzeButton.addEventListener('click', analyzeSelectedColumn);
+        console.log('결측치 처리 버튼 리스너 설정됨');
       }
       
       // 사용자 지정 값 입력 필드 이벤트 리스너
       const customValueInput = document.getElementById('customValueInput');
-      if (customValueInput && !customValueInput.hasAttribute('data-listener-added')) {
-        customValueInput.setAttribute('data-listener-added', 'true');
-        customValueInput.addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') {
-            handleProcessMissingClick();
-          }
-        });
+      if (customValueInput) {
+        // 기존 리스너 제거 후 새로 추가
+        customValueInput.removeEventListener('keypress', handleCustomValueKeypress);
+        customValueInput.addEventListener('keypress', handleCustomValueKeypress);
+        console.log('사용자 지정 값 입력 필드 리스너 설정됨');
       }
+      
+      // 결측치 처리 방법 선택 이벤트 리스너
+      const methodSelect = document.getElementById('missingMethodSelect');
+      if (methodSelect) {
+        // 기존 리스너 제거 후 새로 추가
+        methodSelect.removeEventListener('change', toggleCustomValueInput);
+        methodSelect.addEventListener('change', toggleCustomValueInput);
+        console.log('결측치 처리 방법 선택 리스너 설정됨');
+      }
+      
+      console.log('이벤트 리스너 설정 완료');
     }
     
+    // 사용자 지정 값 입력 필드 키프레스 핸들러
+    function handleCustomValueKeypress(e) {
+      if (e.key === 'Enter') {
+        handleProcessMissingClick();
+      }
+    }
+
     function handleProcessMissingClick() {
+      console.log('=== handleProcessMissingClick 시작 ===');
+      
       const columnSelect = document.getElementById('missingColumnSelect');
       const methodSelect = document.getElementById('missingMethodSelect');
       
-      if (!columnSelect || !methodSelect) return;
+      if (!columnSelect || !methodSelect) {
+        console.error('❌ 필요한 요소를 찾을 수 없습니다.');
+        return;
+      }
       
       const selectedColumn = columnSelect.value;
       const selectedMethod = methodSelect.value;
       
+      console.log('선택된 열:', selectedColumn);
+      console.log('선택된 방법:', selectedMethod);
+      console.log('originalData 상태:', originalData ? '존재함' : 'null');
+      
       if (!selectedMethod) {
         alert('처리 방법을 선택해주세요.');
+        return;
+      }
+      
+      // originalData가 null인지 확인
+      if (!originalData || originalData.length === 0) {
+        console.error('❌ originalData가 null이거나 비어있습니다.');
+        alert('분석할 데이터가 없습니다. 먼저 CSV 파일을 업로드해주세요.');
         return;
       }
       
@@ -788,11 +887,15 @@
         customValue = customValueInput.value.trim();
       }
       
+      console.log('결측치 처리 시작...');
+      
       // 현재 데이터로 결측치 처리
       const processedData = processMissingData(originalData, selectedColumn, selectedMethod, customValue);
       
+      console.log('처리된 데이터:', processedData ? processedData.length : 'null', '행');
+      
       // 데이터가 비어있는지 확인
-      if (processedData.length <= 1) {
+      if (!processedData || processedData.length <= 1) {
         alert('결측치 처리 후 분석할 데이터가 없습니다. 다른 처리 방법을 시도해주세요.');
         return;
       }
@@ -800,24 +903,36 @@
       // 캐시 초기화 (결측치 처리 후 데이터가 변경되었으므로)
       processedData._numericColumnsCache = null;
       
+      // 처리된 데이터를 전역 변수에 저장
+      globalData = processedData;
+      window.processedData = processedData; // 특정 열 분석을 위해 별도 저장
+      
+      console.log('전역 변수에 데이터 저장 완료');
+      
       // 처리된 데이터로 분석 결과 업데이트
       const describeData = calculateDescribe(processedData);
       const missingData = calculateMissingData(processedData);
       
+      console.log('분석 완료, 결과 표시 시작...');
+      
       // 결과 표시 업데이트
-      displayProcessedResults(globalData, processedData, selectedColumn, selectedMethod, customValue);
+      displayProcessedResults(originalData, processedData, selectedColumn, selectedMethod, customValue);
       
       // 처리 완료 메시지
       const methodNames = {
         'delete': '결측치 삭제',
         'mean': '평균값 대체',
         'mode': '최빈값 대체',
-        'custom': `사용자 지정 값 (${customValue})`
+        'custom': `사용자 지정 값 (${customValue})`,
+        'median': '중앙값으로 대체',
+        'forward_fill': '앞의 값으로 채우기',
+        'backward_fill': '뒤의 값으로 채우기'
       };
       
       const columnName = selectedColumn === '' ? '전체 열' : 
-        globalData[0][parseInt(selectedColumn)];
+        originalData[0][parseInt(selectedColumn)];
       
+      console.log('=== handleProcessMissingClick 완료 ===');
       alert(`${columnName}에 대해 ${methodNames[selectedMethod]} 처리가 완료되었습니다.`);
     }
 
@@ -864,7 +979,10 @@
         'delete': '결측치 삭제',
         'mean': '평균값 대체',
         'mode': '최빈값 대체',
-        'custom': `사용자 지정 값 (${customValue})`
+        'custom': `사용자 지정 값 (${customValue})`,
+        'median': '중앙값으로 대체',
+        'forward_fill': '앞의 값으로 채우기',
+        'backward_fill': '뒤의 값으로 채우기'
       };
       
       const columnName = selectedColumn === '' ? '전체 열' : 
@@ -903,9 +1021,9 @@
         html += displayDescribeResult(processedDescribeData);
       }
       
-      // 처리된 데이터 결측치 분석
+      // 처리된 데이터 결측치 분석 (결측치 처리 메뉴 숨김)
       html += '<h3><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>🔍 처리 후 데이터 결측치 분석</h3>';
-      html += displayMissingDataResult(processedMissingData);
+      html += displayMissingDataResult(processedMissingData, true);
       
       resultDiv.innerHTML = html;
       
@@ -1107,80 +1225,227 @@
 
     // 결측치 처리 함수들
     function processMissingData(data, columnIndex, method, customValue = null) {
+      console.log('=== processMissingData 시작 ===');
+      console.log('입력 데이터:', data ? data.length : 'null', '행');
+      console.log('선택된 열:', columnIndex);
+      console.log('처리 방법:', method);
+      
       const processedData = JSON.parse(JSON.stringify(data)); // 깊은 복사
       
       if (columnIndex === '') {
         // 전체 열 처리
-        for (let col = 0; col < processedData[0].length; col++) {
-          processColumn(processedData, col, method, customValue);
+        console.log('전체 열 처리 시작');
+        if (method === 'delete') {
+          // delete 메서드는 특별 처리 - 결측치가 있는 행을 모두 제거
+          console.log('delete 메서드로 전체 열 처리');
+          const rowsToDelete = new Set();
+          
+          // 결측치가 있는 행들을 찾기
+          for (let i = 1; i < processedData.length; i++) {
+            for (let col = 0; col < processedData[0].length; col++) {
+              if (!processedData[i][col] || processedData[i][col].toString().trim() === '') {
+                rowsToDelete.add(i);
+                break; // 한 행에 결측치가 있으면 해당 행은 삭제 대상
+              }
+            }
+          }
+          
+          // 결측치가 있는 행들을 뒤에서부터 삭제 (인덱스 변경 방지)
+          const rowsToDeleteArray = Array.from(rowsToDelete).sort((a, b) => b - a);
+          rowsToDeleteArray.forEach(rowIndex => {
+            processedData.splice(rowIndex, 1);
+          });
+          
+          console.log(`${rowsToDeleteArray.length}개 행 삭제됨`);
+        } else {
+          // 다른 메서드들은 각 열을 개별적으로 처리
+          console.log('각 열을 개별적으로 처리');
+          for (let col = 0; col < processedData[0].length; col++) {
+            // 1열(인덱스 열)은 보호 - 결측치 처리 건너뛰기
+            if (col === 0) {
+              console.log(`열 ${col} (인덱스 열) - 결측치 처리 건너뛰기`);
+              continue;
+            }
+            console.log(`열 ${col} 처리 시작`);
+            processColumn(processedData, col, method, customValue);
+            console.log(`열 ${col} 처리 완료`);
+          }
         }
       } else {
         // 특정 열 처리
+        console.log('특정 열 처리 시작:', columnIndex);
         processColumn(processedData, parseInt(columnIndex), method, customValue);
       }
       
+      console.log('처리된 데이터:', processedData.length, '행');
+      console.log('=== processMissingData 완료 ===');
       return processedData;
     }
     
     function processColumn(data, columnIndex, method, customValue = null) {
+      console.log(`=== processColumn 시작: 열 ${columnIndex}, 방법 ${method} ===`);
+      
       const values = [];
       
       // 유효한 값들 수집
       for (let i = 1; i < data.length; i++) {
-        if (data[i][columnIndex] && data[i][columnIndex].trim() !== '') {
+        if (data[i][columnIndex] && data[i][columnIndex].toString().trim() !== '') {
           values.push(data[i][columnIndex]);
         }
       }
       
-      if (values.length === 0) return; // 처리할 값이 없음
+      console.log(`열 ${columnIndex}: 유효한 값 ${values.length}개`);
+      
+      if (values.length === 0) {
+        console.log(`열 ${columnIndex}: 처리할 값이 없음`);
+        return; // 처리할 값이 없음
+      }
       
       let replacementValue = '';
+      let isNumericReplacement = false;
+      
+      // 해당 컬럼이 숫자형인지 먼저 확인
+      const numericValues = values.filter(v => !isNaN(parseFloat(v))).map(v => parseFloat(v));
+      const isNumericColumn = numericValues.length > 0 && numericValues.length === values.length;
+      
+      console.log(`컬럼 ${columnIndex} 분석: 총 ${values.length}개 값, 숫자형 ${numericValues.length}개, 숫자형 컬럼=${isNumericColumn}`);
       
       switch (method) {
-        case 'delete':
-          // 결측치가 있는 행들을 제거
-          for (let i = data.length - 1; i >= 1; i--) {
-            if (!data[i][columnIndex] || data[i][columnIndex].trim() === '') {
-              data.splice(i, 1);
-            }
-          }
-          return;
-          
         case 'mean':
-          // 숫자형 데이터인지 확인
-          const numericValues = values.filter(v => !isNaN(parseFloat(v))).map(v => parseFloat(v));
           if (numericValues.length > 0) {
             const mean = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
-            replacementValue = mean.toFixed(2);
+            replacementValue = mean; // 숫자로 유지
+            isNumericReplacement = true;
+            console.log(`평균값 계산: ${mean}`);
           } else {
             // 숫자가 아니면 최빈값 사용
             replacementValue = getMode(values);
+            console.log(`숫자가 아니므로 최빈값 사용: ${replacementValue}`);
           }
           break;
           
         case 'mode':
-          replacementValue = getMode(values);
+          if (isNumericColumn) {
+            // 숫자형 컬럼인 경우 숫자형 최빈값 계산
+            const mode = getNumericMode(numericValues);
+            replacementValue = mode;
+            isNumericReplacement = true;
+            console.log(`숫자형 최빈값: ${mode}`);
+          } else {
+            // 문자열 컬럼인 경우 문자열 최빈값 사용
+            replacementValue = getMode(values);
+            console.log(`문자열 최빈값: ${replacementValue}`);
+          }
           break;
           
         case 'custom':
           // 사용자 지정 값 사용
           if (customValue !== null) {
-            replacementValue = customValue;
+            if (isNumericColumn && !isNaN(parseFloat(customValue))) {
+              // 숫자형 컬럼이고 사용자 지정 값이 숫자인 경우
+              replacementValue = parseFloat(customValue);
+              isNumericReplacement = true;
+              console.log(`숫자형 사용자 지정 값: ${replacementValue}`);
+            } else {
+              // 문자열로 처리
+              replacementValue = customValue;
+              console.log(`문자열 사용자 지정 값: ${replacementValue}`);
+            }
           } else {
             // 기본값으로 빈 문자열 사용
             replacementValue = '';
+            console.log('기본값 사용: 빈 문자열');
           }
           break;
+          
+        case 'median':
+          // 중앙값으로 대체 (pandas fillna(df.median())과 유사)
+          if (numericValues.length > 0) {
+            const sortedValues = [...numericValues].sort((a, b) => a - b);
+            const mid = Math.floor(sortedValues.length / 2);
+            replacementValue = sortedValues.length % 2 === 0 
+              ? (sortedValues[mid - 1] + sortedValues[mid]) / 2 
+              : sortedValues[mid];
+            isNumericReplacement = true;
+            console.log(`중앙값: ${replacementValue}`);
+          } else {
+            replacementValue = getMode(values);
+            console.log(`숫자가 아니므로 최빈값 사용: ${replacementValue}`);
+          }
+          break;
+          
+        case 'forward_fill':
+          // 앞의 값으로 채우기 (pandas fillna(method='ffill')과 유사)
+          console.log('앞의 값으로 채우기 시작');
+          for (let i = 1; i < data.length; i++) {
+            if (!data[i][columnIndex] || data[i][columnIndex].toString().trim() === '') {
+              // 앞의 유효한 값 찾기
+              for (let j = i - 1; j >= 1; j--) {
+                if (data[j][columnIndex] && data[j][columnIndex].toString().trim() !== '') {
+                  data[i][columnIndex] = data[j][columnIndex];
+                  console.log(`행 ${i}를 행 ${j}의 값으로 채움: ${data[j][columnIndex]}`);
+                  break;
+                }
+              }
+            }
+          }
+          console.log('앞의 값으로 채우기 완료');
+          break;
+          
+        case 'backward_fill':
+          // 뒤의 값으로 채우기 (pandas fillna(method='bfill')과 유사)
+          console.log('뒤의 값으로 채우기 시작');
+          for (let i = data.length - 1; i >= 1; i--) {
+            if (!data[i][columnIndex] || data[i][columnIndex].toString().trim() === '') {
+              // 뒤의 유효한 값 찾기
+              for (let j = i + 1; j < data.length; j++) {
+                if (data[j][columnIndex] && data[j][columnIndex].toString().trim() !== '') {
+                  data[i][columnIndex] = data[j][columnIndex];
+                  console.log(`행 ${i}를 행 ${j}의 값으로 채움: ${data[j][columnIndex]}`);
+                  break;
+                }
+              }
+            }
+          }
+          console.log('뒤의 값으로 채우기 완료');
+          break;
+          
+        default:
+          console.error(`알 수 없는 처리 방법: ${method}`);
+          return;
       }
       
       // 결측치를 대체값으로 교체
+      let replacedCount = 0;
       for (let i = 1; i < data.length; i++) {
-        if (!data[i][columnIndex] || data[i][columnIndex].trim() === '') {
+        if (!data[i][columnIndex] || data[i][columnIndex].toString().trim() === '') {
           data[i][columnIndex] = replacementValue;
+          replacedCount++;
         }
       }
+      
+      console.log(`컬럼 ${columnIndex} 결측치 처리 완료: ${method}, 대체값=${replacementValue}, 숫자형=${isNumericReplacement}, 교체된 셀=${replacedCount}개`);
+      console.log(`=== processColumn 완료 ===`);
     }
     
+    // 숫자형 데이터의 최빈값 계산 함수
+    function getNumericMode(values) {
+      const frequency = {};
+      let maxFreq = 0;
+      let mode = values[0];
+      
+      values.forEach(value => {
+        frequency[value] = (frequency[value] || 0) + 1;
+        if (frequency[value] > maxFreq) {
+          maxFreq = frequency[value];
+          mode = value;
+        }
+      });
+      
+      return mode;
+    }
+
+    // 문자열 데이터의 최빈값 계산 함수
     function getMode(values) {
       const frequency = {};
       let maxFreq = 0;
@@ -1304,10 +1569,6 @@
               padding: 10px 8px;
               text-align: center;
               border-bottom: 1px solid #eee;
-            }
-            
-            .analysis-result tr:nth-child(even) {
-              background-color: #f8f9ff;
             }
             
             .table-container {
