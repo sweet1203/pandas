@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>CSV 데이터 분석기</title>
+  <title>📊 데이터 분석 & 시각화</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', '맑은 고딕', 'Noto Sans KR', sans-serif;
@@ -312,19 +312,234 @@
         padding: 6px 4px;
       }
     }
+    /* ── 탭 네비게이션 ── */
+    .tab-nav {
+      display: flex;
+      background: #f0f2ff;
+      border-bottom: 2px solid #d8dcff;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 1rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #999;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover:not(.active) { background: #e8ecff; color: #667eea; }
+    .tab-btn.active { color: #667eea; border-bottom-color: #667eea; background: white; }
+
+    /* ── 시각화 탭 공통 ── */
+    .settings-card {
+      background: #f8f9ff;
+      border: 1px solid #e8ecff;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .viz-section-title {
+      font-weight: 700;
+      color: #667eea;
+      font-size: 0.95rem;
+      margin-bottom: 0.85rem;
+    }
+    .chart-type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .chart-type-btn {
+      border: 2px solid #e0e8ff;
+      border-radius: 10px;
+      padding: 0.65rem 0.4rem;
+      text-align: center;
+      cursor: pointer;
+      background: white;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .chart-type-btn:hover { border-color: #667eea; background: #eef0ff; }
+    .chart-type-btn.active {
+      border-color: #667eea;
+      background: linear-gradient(135deg, #667eea22, #764ba222);
+      box-shadow: 0 0 0 2px #667eea44;
+    }
+    .chart-type-btn .ct-icon { font-size: 1.5rem; display: block; margin-bottom: 0.2rem; }
+    .chart-type-btn .ct-name { font-size: 0.78rem; font-weight: 700; color: #444; }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+    .settings-grid.full { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-group label { font-size: 0.82rem; font-weight: 600; color: #555; }
+    .form-group select,
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid #d0d8ff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      background: white;
+      color: #333;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group select:focus,
+    .form-group input:focus { border-color: #667eea; }
+    .form-group select[multiple] { height: 90px; }
+    .color-theme-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .color-theme-btn {
+      display: flex; align-items: center; gap: 3px;
+      padding: 4px 8px;
+      border: 2px solid #ddd; border-radius: 6px;
+      cursor: pointer; background: white;
+      font-size: 0.72rem; color: #555;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .color-theme-btn:hover { border-color: #667eea; }
+    .color-theme-btn.active { border-color: #667eea; background: #f0f2ff; font-weight: 700; }
+    .color-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .draw-btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s;
+      margin-top: 0.25rem;
+    }
+    .draw-btn:hover { opacity: 0.88; }
+    .viz-output-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem;
+    }
+    .chart-container {
+      background: white; border-radius: 10px;
+      padding: 1rem;
+      position: relative;
+    }
+    .viz-no-data {
+      text-align: center; padding: 2.5rem;
+      color: #bbb; font-size: 0.95rem;
+    }
+    .viz-no-data i { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+    @media (max-width: 768px) {
+      .chart-type-grid { grid-template-columns: repeat(3, 1fr); }
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Seaborn 데이터셋 섹션 ── */
+    .seaborn-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0 1rem;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .seaborn-divider::before,
+    .seaborn-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e0e0e0;
+    }
+    .seaborn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+    .seaborn-card {
+      border: 1.5px solid #e0e8ff;
+      border-radius: 10px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: #f8f9ff;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .seaborn-card:hover {
+      border-color: #667eea;
+      background: #eef0ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102,126,234,0.2);
+    }
+    .seaborn-card.active {
+      border-color: #667eea;
+      background: linear-gradient(135deg, #667eea22, #764ba222);
+      box-shadow: 0 0 0 2px #667eea55;
+    }
+    .seaborn-card .card-icon { font-size: 1.4rem; margin-bottom: 0.3rem; }
+    .seaborn-card .card-name {
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: #444;
+      margin-bottom: 0.2rem;
+    }
+    .seaborn-card .card-desc {
+      font-size: 0.72rem;
+      color: #888;
+      line-height: 1.3;
+    }
+    .seaborn-card .card-rows {
+      font-size: 0.68rem;
+      color: #aaa;
+      margin-top: 0.25rem;
+    }
+    .dataset-badge {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #667eea22, #764ba222);
+      border: 1px solid #667eea55;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+    .dataset-badge.visible { display: flex; }
+    .dataset-badge strong { color: #667eea; }
+    @media (max-width: 768px) {
+      .seaborn-grid { grid-template-columns: repeat(3, 1fr); }
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>📊 CSV 데이터 분석기</h1>
-      <p>pandas info(), describe(), 결측치 분석 및 처리를 웹에서 사용해보세요</p>
+      <h1>📊 데이터 분석 & 시각화</h1>
+      <p>Seaborn 데이터셋 또는 CSV 파일로 분석·시각화를 한 번에!</p>
     </div>
-    
-    <div class="content">
+
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="analysis" onclick="switchTab('analysis')">📊 데이터 분석기</button>
+      <button class="tab-btn" data-tab="viz" onclick="switchTab('viz')">📈 데이터 시각화</button>
+    </div>
+
+    <div class="content" id="tab-analysis">
       <div class="info-box">
         <h4>📋 사용 방법</h4>
         <ul>
@@ -351,6 +566,13 @@
         <input type="file" id="csvFile" accept=".csv" style="display: none;">
       </div>
       
+      <div class="seaborn-divider">또는 Seaborn 샘플 데이터셋 불러오기</div>
+      <div class="seaborn-grid" id="seabornGrid"></div>
+      <div class="dataset-badge" id="datasetBadge">
+        <i class="fas fa-database"></i>
+        현재 데이터: <strong id="datasetBadgeName"></strong><span id="datasetBadgeInfo"></span>
+      </div>
+
       <div id="loadingIndicator" class="loading" style="display: none;">
         <i class="fas fa-spinner fa-spin"></i>
         <p>데이터를 분석하고 있습니다...</p>
@@ -358,8 +580,103 @@
       
       <div id="analysisResult" class="analysis-result"></div>
     </div>
-  </div>
-  
+
+    <!-- ── 시각화 탭 ── -->
+    <div class="content" id="tab-viz" style="display:none">
+
+      <!-- 데이터 선택 영역 -->
+      <div id="vizDataSelect">
+        <div class="info-box">
+          <h4>📈 시각화 방법</h4>
+          <ul>
+            <li>아래에서 <strong>Seaborn 데이터셋</strong>을 선택하거나 CSV 파일을 업로드하세요</li>
+            <li><strong>데이터 분석기</strong> 탭에서 불러온 데이터가 있으면 자동으로 사용돼요</li>
+            <li>그래프 유형·축·제목 등을 설정한 뒤 <strong>그래프 그리기</strong>를 누르세요</li>
+          </ul>
+        </div>
+
+        <div class="file-upload" id="vizFileUpload">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>📁 CSV 파일을 여기에 드래그하거나 클릭하여 업로드하세요</p>
+          <p class="small">💡 지원 형식: .csv 파일</p>
+          <input type="file" id="vizCsvFile" accept=".csv" style="display:none">
+        </div>
+
+        <div class="seaborn-divider">또는 Seaborn 샘플 데이터셋 불러오기</div>
+        <div class="seaborn-grid" id="vizSeabornGrid"></div>
+      </div>
+
+      <div id="vizLoadingIndicator" class="loading" style="display:none">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>데이터를 불러오고 있습니다...</p>
+      </div>
+
+      <div class="dataset-badge" id="vizDatasetBadge">
+        <i class="fas fa-database"></i>
+        현재 데이터: <strong id="vizDatasetBadgeName"></strong><span id="vizDatasetBadgeInfo"></span>
+      </div>
+
+      <!-- 그래프 설정 패널 -->
+      <div id="vizSettings" style="display:none">
+
+        <!-- 그래프 유형 -->
+        <div class="settings-card">
+          <div class="viz-section-title"><i class="fas fa-chart-bar" style="margin-right:.4rem"></i>그래프 유형 선택</div>
+          <div class="chart-type-grid" id="chartTypeGrid">
+            <div class="chart-type-btn active" data-type="line"      onclick="selectChartType('line')">      <span class="ct-icon">📈</span><span class="ct-name">꺾은선</span></div>
+            <div class="chart-type-btn"        data-type="bar"       onclick="selectChartType('bar')">       <span class="ct-icon">📊</span><span class="ct-name">막대</span></div>
+            <div class="chart-type-btn"        data-type="barh"      onclick="selectChartType('barh')">      <span class="ct-icon">↔️</span><span class="ct-name">가로막대</span></div>
+            <div class="chart-type-btn"        data-type="pie"       onclick="selectChartType('pie')">       <span class="ct-icon">🥧</span><span class="ct-name">원 그래프</span></div>
+            <div class="chart-type-btn"        data-type="scatter"   onclick="selectChartType('scatter')">   <span class="ct-icon">🔵</span><span class="ct-name">산점도</span></div>
+            <div class="chart-type-btn"        data-type="histogram" onclick="selectChartType('histogram')"> <span class="ct-icon">📉</span><span class="ct-name">히스토그램</span></div>
+          </div>
+        </div>
+
+        <!-- 축 설정 -->
+        <div class="settings-card">
+          <div class="viz-section-title"><i class="fas fa-sliders-h" style="margin-right:.4rem"></i>축 및 제목 설정</div>
+          <div id="axisSettingsGrid"></div>
+          <div class="settings-grid">
+            <div class="form-group">
+              <label>📝 그래프 제목</label>
+              <input type="text" id="chartTitle" placeholder="제목 입력 (선택)">
+            </div>
+            <div class="form-group">
+              <label>🎨 색상 테마</label>
+              <div class="color-theme-btns" id="colorThemeBtns"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 추가 설정 -->
+        <div class="settings-card" id="typeOptionsCard">
+          <div class="viz-section-title"><i class="fas fa-cog" style="margin-right:.4rem"></i>추가 설정</div>
+          <div id="typeOptionsContent"></div>
+        </div>
+
+        <button class="draw-btn" onclick="renderChart()">
+          <i class="fas fa-paint-brush" style="margin-right:.5rem"></i>그래프 그리기
+        </button>
+      </div>
+
+      <!-- 그래프 출력 -->
+      <div id="vizOutput" style="display:none; margin-top:1.5rem">
+        <div class="settings-card">
+          <div class="viz-output-header">
+            <div class="viz-section-title" style="margin:0"><i class="fas fa-chart-line" style="margin-right:.4rem"></i>그래프 결과</div>
+            <button class="pdf-export" onclick="exportVizToPDF()" style="margin:0; padding:.5rem 1rem; font-size:.85rem">
+              <i class="fas fa-file-pdf"></i> PDF로 출력하기
+            </button>
+          </div>
+          <div class="chart-container">
+            <canvas id="vizChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-viz -->
+  </div><!-- /container -->
+
   <!-- 제작자 정보 -->
   <div style="text-align: center; padding: 20px; margin-top: 20px; color: #666; font-size: 0.9rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', '맑은 고딕', 'Noto Sans KR', sans-serif;">
     <div style="background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: inline-block;">
@@ -1223,6 +1540,496 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // ── Seaborn 데이터셋 ──
+    const SEABORN_DATASETS = [
+      { name: 'iris',       icon: '🌸', desc: '붓꽃 분류',       rows: '150행 × 5열' },
+      { name: 'titanic',    icon: '🚢', desc: '생존자 분석',      rows: '891행 × 15열' },
+      { name: 'tips',       icon: '🍽️', desc: '식당 팁',          rows: '244행 × 7열' },
+      { name: 'penguins',   icon: '🐧', desc: '펭귄 종류',        rows: '344행 × 7열' },
+      { name: 'diamonds',   icon: '💎', desc: '다이아몬드 가격',  rows: '53940행 × 10열' },
+      { name: 'flights',    icon: '✈️', desc: '항공 승객',        rows: '144행 × 3열' },
+      { name: 'mpg',        icon: '🚗', desc: '자동차 연비',      rows: '398행 × 9열' },
+      { name: 'planets',    icon: '🪐', desc: '외계행성',         rows: '1035행 × 6열' },
+      { name: 'taxis',      icon: '🚕', desc: '택시 승하차',      rows: '6433행 × 8열' },
+      { name: 'geyser',     icon: '💧', desc: '간헐천 분출',      rows: '272행 × 2열' },
+      { name: 'healthexp',  icon: '🏥', desc: '의료비 지출',      rows: '274행 × 4열' },
+      { name: 'fmri',       icon: '🧠', desc: '뇌 활동 측정',    rows: '1064행 × 5열' },
+    ];
+
+    function renderSeabornCards() {
+      const makeCards = (onclick) => SEABORN_DATASETS.map(ds => `
+        <div class="seaborn-card" data-name="${ds.name}" onclick="${onclick}('${ds.name}')">
+          <div class="card-icon">${ds.icon}</div>
+          <div class="card-name">${ds.name}</div>
+          <div class="card-desc">${ds.desc}</div>
+          <div class="card-rows">${ds.rows}</div>
+        </div>
+      `).join('');
+      const grid = document.getElementById('seabornGrid');
+      if (grid) grid.innerHTML = makeCards('loadSeabornDataset');
+      const vizGrid = document.getElementById('vizSeabornGrid');
+      if (vizGrid) vizGrid.innerHTML = makeCards('loadSeabornDatasetViz');
+    }
+
+    // ── 탭 전환 ──
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('tab-analysis').style.display = tab === 'analysis' ? '' : 'none';
+      document.getElementById('tab-viz').style.display = tab === 'viz' ? '' : 'none';
+      if (tab === 'viz' && originalData) showVizSettings(originalData);
+    }
+
+    // ── 시각화 탭: 색상 테마 ──
+    let vizColorTheme = '파랑계열';
+    let vizCurrentType = 'line';
+    let vizChartInstance = null;
+
+    const VIZ_COLOR_THEMES = {
+      '파랑계열': ['#4e79a7','#76b7b2','#6baed6','#9ecae1','#2171b5','#c6dbef'],
+      '빨강계열': ['#e15759','#f28e2b','#ff9da7','#fa9fb5','#dd3497','#f768a1'],
+      '파스텔':   ['#ffb3ba','#ffdfba','#ffffba','#baffc9','#bae1ff','#dab0ff'],
+      '무지개':   ['#FF6B6B','#FFA07A','#FFD700','#98FB98','#87CEFA','#DDA0DD'],
+      '초록계열': ['#006d2c','#31a354','#74c476','#a1d99b','#c7e9c0','#238b45'],
+      '보라계열': ['#54278f','#756bb1','#9e9ac8','#bcbddc','#6a51a3','#3f007d'],
+    };
+
+    // ── 시각화 탭: 데이터 불러오기 ──
+    function loadSeabornDatasetViz(name) {
+      const loadingEl = document.getElementById('vizLoadingIndicator');
+      loadingEl.style.display = 'block';
+      document.getElementById('vizSettings').style.display = 'none';
+      document.getElementById('vizOutput').style.display = 'none';
+      document.getElementById('vizDatasetBadge').classList.remove('visible');
+
+      document.querySelectorAll('#vizSeabornGrid .seaborn-card').forEach(c => c.classList.remove('active'));
+      const activeCard = document.querySelector(`#vizSeabornGrid .seaborn-card[data-name="${name}"]`);
+      if (activeCard) activeCard.classList.add('active');
+
+      fetch(`https://raw.githubusercontent.com/mwaskom/seaborn-data/master/${name}.csv`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); })
+        .then(csvText => {
+          Papa.parse(csvText, {
+            complete(results) {
+              loadingEl.style.display = 'none';
+              if (!results.data || results.data.length < 2) return;
+              results.data._fileName = name + '.csv';
+              originalData = JSON.parse(JSON.stringify(results.data));
+              originalData._numericColumnsCache = null;
+              showVizSettings(originalData);
+            }
+          });
+        })
+        .catch(err => {
+          loadingEl.style.display = 'none';
+          if (activeCard) activeCard.classList.remove('active');
+          alert('데이터셋을 불러오지 못했습니다: ' + err.message);
+        });
+    }
+
+    function handleVizFileUpload(file) {
+      const loadingEl = document.getElementById('vizLoadingIndicator');
+      loadingEl.style.display = 'block';
+      document.getElementById('vizSettings').style.display = 'none';
+      document.getElementById('vizOutput').style.display = 'none';
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        Papa.parse(e.target.result, {
+          complete(results) {
+            loadingEl.style.display = 'none';
+            if (!results.data || results.data.length < 2) return;
+            results.data._fileName = file.name;
+            originalData = JSON.parse(JSON.stringify(results.data));
+            originalData._numericColumnsCache = null;
+            showVizSettings(originalData);
+          }
+        });
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // ── 시각화 탭: 설정 패널 표시 ──
+    function showVizSettings(data) {
+      const name = (data._fileName || '데이터').replace('.csv','');
+      const rows = data.length - 1;
+      const cols = data[0].length;
+      document.getElementById('vizDatasetBadgeName').textContent = name;
+      document.getElementById('vizDatasetBadgeInfo').textContent = ` (${rows}행 × ${cols}열)`;
+      document.getElementById('vizDatasetBadge').classList.add('visible');
+      document.getElementById('vizSettings').style.display = 'block';
+      updateAxisSettings();
+      renderColorThemes();
+      updateTypeOptions();
+    }
+
+    function getVizColumns() {
+      return (!originalData || !originalData[0]) ? [] : originalData[0];
+    }
+
+    function getVizNumericColumns() {
+      if (!originalData || originalData.length < 2) return [];
+      return originalData[0].filter((_, i) => {
+        const vals = originalData.slice(1, 51).map(r => r[i]).filter(v => v !== '' && v != null);
+        return vals.filter(v => !isNaN(parseFloat(v))).length > vals.length * 0.6;
+      });
+    }
+
+    function updateAxisSettings() {
+      const grid = document.getElementById('axisSettingsGrid');
+      const cols = getVizColumns();
+      const numCols = getVizNumericColumns();
+      const t = vizCurrentType;
+      const colOpts   = cols.map(c => `<option value="${c}">${c}</option>`).join('');
+      const numOpts   = numCols.map(c => `<option value="${c}">${c}</option>`).join('');
+      const numMulti  = numCols.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      if (t === 'histogram') {
+        grid.innerHTML = `
+          <div class="form-group"><label>📊 데이터 열 (숫자형)</label>
+            <select id="vizColX">${numOpts}</select></div>
+          <div class="form-group"><label>📏 X축 이름</label>
+            <input type="text" id="vizXLabel" placeholder="(선택)"></div>`;
+      } else if (t === 'pie') {
+        grid.innerHTML = `
+          <div class="form-group"><label>🏷️ 레이블 열</label>
+            <select id="vizColX">${colOpts}</select></div>
+          <div class="form-group"><label>📊 값 열 (숫자형)</label>
+            <select id="vizColY">${numOpts}</select></div>`;
+      } else if (t === 'scatter') {
+        grid.innerHTML = `
+          <div class="form-group"><label>📐 X축 열 (숫자형)</label>
+            <select id="vizColX">${numOpts}</select></div>
+          <div class="form-group"><label>📐 Y축 열 (숫자형)</label>
+            <select id="vizColY">${numOpts}</select></div>
+          <div class="form-group"><label>📏 X축 이름</label>
+            <input type="text" id="vizXLabel" placeholder="(선택)"></div>
+          <div class="form-group"><label>📏 Y축 이름</label>
+            <input type="text" id="vizYLabel" placeholder="(선택)"></div>`;
+        // 두 번째 숫자형 컬럼 기본 선택
+        setTimeout(() => {
+          const sel = document.getElementById('vizColY');
+          if (sel && sel.options.length > 1) sel.selectedIndex = 1;
+        }, 0);
+      } else {
+        // line, bar, barh
+        grid.innerHTML = `
+          <div class="form-group"><label>📐 X축 열</label>
+            <select id="vizColX">${colOpts}</select></div>
+          <div class="form-group"><label>📐 Y축 열 (숫자형, 다중선택)</label>
+            <select id="vizColY" multiple>${numMulti}</select></div>
+          <div class="form-group"><label>📏 X축 이름</label>
+            <input type="text" id="vizXLabel" placeholder="(선택)"></div>
+          <div class="form-group"><label>📏 Y축 이름</label>
+            <input type="text" id="vizYLabel" placeholder="(선택)"></div>`;
+        setTimeout(() => {
+          const sel = document.getElementById('vizColY');
+          if (sel && sel.options.length > 0) sel.options[0].selected = true;
+        }, 0);
+      }
+    }
+
+    function renderColorThemes() {
+      document.getElementById('colorThemeBtns').innerHTML = Object.entries(VIZ_COLOR_THEMES).map(([name, colors]) => `
+        <button class="color-theme-btn ${name === vizColorTheme ? 'active' : ''}" onclick="selectColorTheme('${name}')">
+          ${colors.slice(0,3).map(c => `<span class="color-dot" style="background:${c}"></span>`).join('')}
+          ${name}
+        </button>`).join('');
+    }
+
+    function selectColorTheme(name) {
+      vizColorTheme = name;
+      renderColorThemes();
+    }
+
+    function selectChartType(type) {
+      vizCurrentType = type;
+      document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+      updateAxisSettings();
+      updateTypeOptions();
+    }
+
+    function updateTypeOptions() {
+      const t = vizCurrentType;
+      const c = document.getElementById('typeOptionsContent');
+      if (t === 'line') {
+        c.innerHTML = `<div class="settings-grid">
+          <div class="form-group"><label>🔵 마커 모양</label>
+            <select id="optMarker">
+              <option value="circle">● 동그라미</option><option value="rect">■ 네모</option>
+              <option value="triangle">▲ 삼각형</option><option value="star">★ 별</option>
+              <option value="none">없음</option></select></div>
+          <div class="form-group"><label>〰️ 선 스타일</label>
+            <select id="optBorderDash">
+              <option value="solid">실선 ——</option><option value="dashed">점선 - - -</option>
+              <option value="dotted">도트 ···</option></select></div>
+          <div class="form-group"><label>선 굵기</label>
+            <input type="number" id="optLineWidth" value="2" min="1" max="8"></div>
+          <div class="form-group"><label>격자 표시</label>
+            <select id="optGrid"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+        </div>`;
+      } else if (t === 'bar' || t === 'barh') {
+        c.innerHTML = `<div class="settings-grid">
+          <div class="form-group"><label>🔢 막대 위 숫자 표시</label>
+            <select id="optShowValues"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+          <div class="form-group"><label>격자 표시</label>
+            <select id="optGrid"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+        </div>`;
+      } else if (t === 'pie') {
+        c.innerHTML = `<div class="settings-grid">
+          <div class="form-group"><label>📊 비율(%) 표시</label>
+            <select id="optShowPercent"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+          <div class="form-group"><label>🍩 도넛 차트</label>
+            <select id="optDoughnut"><option value="false">원 그래프</option><option value="true">도넛</option></select></div>
+        </div>`;
+      } else if (t === 'scatter') {
+        c.innerHTML = `<div class="settings-grid">
+          <div class="form-group"><label>🔵 점 크기</label>
+            <input type="number" id="optPointSize" value="5" min="1" max="20"></div>
+          <div class="form-group"><label>💧 투명도 (0~1)</label>
+            <input type="number" id="optAlpha" value="0.7" min="0.1" max="1" step="0.1"></div>
+          <div class="form-group"><label>격자 표시</label>
+            <select id="optGrid"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+        </div>`;
+      } else if (t === 'histogram') {
+        c.innerHTML = `<div class="settings-grid">
+          <div class="form-group"><label>📦 bins 개수</label>
+            <input type="number" id="optBins" value="10" min="2" max="50"></div>
+          <div class="form-group"><label>격자 표시</label>
+            <select id="optGrid"><option value="true">켜기</option><option value="false">끄기</option></select></div>
+        </div>`;
+      }
+    }
+
+    // ── 그래프 렌더링 ──
+    function gv(id, def) { const el = document.getElementById(id); return el ? el.value : def; }
+
+    function renderChart() {
+      if (!originalData || originalData.length < 2) {
+        alert('먼저 데이터를 불러오세요.');
+        return;
+      }
+      const t = vizCurrentType;
+      const headers = originalData[0];
+      const rows = originalData.slice(1).filter(r => r.some(v => v !== '' && v != null));
+      const colors = VIZ_COLOR_THEMES[vizColorTheme];
+      const title = gv('chartTitle', '');
+      const xLabel = gv('vizXLabel', '');
+      const yLabel = gv('vizYLabel', '');
+      const showGrid = gv('optGrid', 'true') === 'true';
+
+      const colX = gv('vizColX', headers[0]);
+      const xIdx = headers.indexOf(colX);
+
+      if (vizChartInstance) { vizChartInstance.destroy(); vizChartInstance = null; }
+      document.getElementById('vizOutput').style.display = 'block';
+      const ctx = document.getElementById('vizChart').getContext('2d');
+
+      const titlePlugin = { display: !!title, text: title, font: { size: 16, weight: 'bold' } };
+
+      if (t === 'histogram') {
+        const vals = rows.map(r => parseFloat(r[xIdx])).filter(v => !isNaN(v));
+        const bins = Math.max(2, parseInt(gv('optBins', '10')));
+        const mn = Math.min(...vals), mx = Math.max(...vals), step = (mx - mn) / bins;
+        const counts = Array(bins).fill(0);
+        vals.forEach(v => { let i = Math.min(bins-1, Math.floor((v-mn)/step)); counts[i]++; });
+        const labels = Array.from({length:bins}, (_,i) => (mn + i*step).toFixed(1));
+        vizChartInstance = new Chart(ctx, {
+          type:'bar', data:{labels, datasets:[{label:colX, data:counts,
+            backgroundColor:colors[0]+'bb', borderColor:colors[0], borderWidth:1}]},
+          options:{responsive:true, plugins:{title:titlePlugin, legend:{display:false}},
+            scales:{x:{title:{display:true,text:xLabel||colX},grid:{display:showGrid}},
+                    y:{title:{display:true,text:'빈도'},grid:{display:showGrid}}},
+            barPercentage:1.0, categoryPercentage:1.0}
+        });
+
+      } else if (t === 'scatter') {
+        const colY = gv('vizColY', headers[1]);
+        const yIdx = headers.indexOf(colY);
+        const pts = rows.map(r=>({x:parseFloat(r[xIdx]),y:parseFloat(r[yIdx])})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+        const ps = parseInt(gv('optPointSize','5'));
+        const alpha = parseFloat(gv('optAlpha','0.7'));
+        const hex2 = Math.round(alpha*255).toString(16).padStart(2,'0');
+        vizChartInstance = new Chart(ctx, {
+          type:'scatter', data:{datasets:[{label:`${colX} vs ${colY}`, data:pts,
+            backgroundColor:colors[0]+hex2, pointRadius:ps}]},
+          options:{responsive:true, plugins:{title:titlePlugin},
+            scales:{x:{title:{display:true,text:xLabel||colX},grid:{display:showGrid}},
+                    y:{title:{display:true,text:yLabel||colY},grid:{display:showGrid}}}}
+        });
+
+      } else if (t === 'pie') {
+        const colY = gv('vizColY', headers[1]);
+        const yIdx = headers.indexOf(colY);
+        const aggMap = {};
+        rows.forEach(r => { const k=r[xIdx]||'(없음)', v=parseFloat(r[yIdx]); if(!isNaN(v)) aggMap[k]=(aggMap[k]||0)+v; });
+        const labels = Object.keys(aggMap).slice(0,20);
+        const data = labels.map(k=>aggMap[k]);
+        const showPct = gv('optShowPercent','true')==='true';
+        const isDoughnut = gv('optDoughnut','false')==='true';
+        vizChartInstance = new Chart(ctx, {
+          type: isDoughnut ? 'doughnut' : 'pie',
+          data:{labels, datasets:[{data, backgroundColor:labels.map((_,i)=>colors[i%colors.length]+'cc'),
+            borderColor:labels.map((_,i)=>colors[i%colors.length]), borderWidth:1}]},
+          options:{responsive:true, plugins:{title:titlePlugin,
+            tooltip:{callbacks:{label(ctx){
+              const v=ctx.raw, tot=ctx.dataset.data.reduce((a,b)=>a+b,0);
+              return showPct ? `${ctx.label}: ${v.toFixed(1)} (${(v/tot*100).toFixed(1)}%)` : `${ctx.label}: ${v.toFixed(1)}`;
+            }}}}}
+        });
+
+      } else {
+        // line / bar / barh
+        const isBarH = t === 'barh';
+        const chartType = t === 'line' ? 'line' : 'bar';
+        const colYSel = document.getElementById('vizColY');
+        const selectedCols = colYSel ? Array.from(colYSel.selectedOptions).map(o=>o.value) : [headers[1]];
+        const showValues = (t!=='line') && gv('optShowValues','true')==='true';
+
+        let borderDash = [];
+        if (t==='line') {
+          const ds = gv('optBorderDash','solid');
+          if (ds==='dashed') borderDash=[8,4]; else if(ds==='dotted') borderDash=[2,4];
+        }
+        const lw = parseInt(gv('optLineWidth','2'));
+        const markerMap = {circle:'circle',rect:'rect',triangle:'triangle',star:'star',none:false};
+        const marker = t==='line' ? (markerMap[gv('optMarker','circle')]||false) : false;
+
+        // 데이터 레이블 플러그인 (bar only)
+        const dataLabelsPlugin = {
+          id:'dataLabels',
+          afterDatasetsDraw(chart) {
+            if (!chart.config.options._showValues) return;
+            const ctx2 = chart.ctx;
+            chart.data.datasets.forEach((ds2,i)=>{
+              chart.getDatasetMeta(i).data.forEach((el,j)=>{
+                const v = ds2.data[j];
+                if (v==null) return;
+                ctx2.save();
+                ctx2.fillStyle='#333'; ctx2.font='bold 11px sans-serif'; ctx2.textAlign='center';
+                if (isBarH) { ctx2.textAlign='left'; ctx2.fillText(v,el.x+4,el.y+4); }
+                else { ctx2.fillText(v,el.x,el.y-6); }
+                ctx2.restore();
+              });
+            });
+          }
+        };
+
+        const xVals = rows.map(r=>r[xIdx]);
+        const datasets = selectedCols.map((col,ci)=>{
+          const yIdx = headers.indexOf(col);
+          return {
+            label: col,
+            data: rows.map(r=>{ const v=parseFloat(r[yIdx]); return isNaN(v)?null:v; }),
+            backgroundColor: colors[ci%colors.length]+'cc',
+            borderColor: colors[ci%colors.length],
+            borderWidth: t==='line' ? lw : 1,
+            borderDash,
+            pointStyle: marker,
+            pointRadius: marker ? 5 : (t==='line'?3:0),
+            fill: false,
+            tension: 0.1,
+          };
+        });
+
+        vizChartInstance = new Chart(ctx, {
+          type: chartType,
+          data: {labels: xVals, datasets},
+          options: {
+            indexAxis: isBarH ? 'y' : 'x',
+            responsive: true,
+            _showValues: showValues,
+            plugins: {title:titlePlugin, legend:{display: selectedCols.length>1}},
+            scales: {
+              x:{title:{display:true,text:xLabel||(isBarH?yLabel||selectedCols[0]:xLabel||colX)},grid:{display:showGrid}},
+              y:{title:{display:true,text:yLabel||(isBarH?xLabel||colX:yLabel||selectedCols[0])},grid:{display:showGrid}},
+            }
+          },
+          plugins: [dataLabelsPlugin]
+        });
+      }
+
+      document.getElementById('vizOutput').scrollIntoView({behavior:'smooth', block:'start'});
+    }
+
+    // ── 시각화 PDF 출력 ──
+    function exportVizToPDF() {
+      const canvas = document.getElementById('vizChart');
+      const imgData = canvas.toDataURL('image/png');
+      const title = document.getElementById('chartTitle')?.value || '데이터 시각화';
+      const pw = window.open('','','width=900,height=700');
+      pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+        <style>
+          body{font-family:'Malgun Gothic',sans-serif;padding:30px;background:white;}
+          h1{color:#667eea;text-align:center;margin-bottom:20px;font-size:1.5rem;}
+          img{max-width:100%;display:block;margin:0 auto;border-radius:8px;}
+          @media print{body{padding:10px;}}
+        </style></head><body>
+        <h1>${title}</h1>
+        <img src="${imgData}" alt="차트">
+      </body></html>`);
+      pw.document.close();
+      pw.onload = () => { pw.print(); pw.onafterprint = () => pw.close(); };
+    }
+
+    function loadSeabornDataset(name) {
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const resultDiv = document.getElementById('analysisResult');
+      const badge = document.getElementById('datasetBadge');
+
+      // 카드 활성화 표시
+      document.querySelectorAll('.seaborn-card').forEach(c => c.classList.remove('active'));
+      const activeCard = document.querySelector(`.seaborn-card[data-name="${name}"]`);
+      if (activeCard) activeCard.classList.add('active');
+
+      loadingIndicator.style.display = 'block';
+      resultDiv.style.display = 'none';
+      badge.classList.remove('visible');
+
+      const url = `https://raw.githubusercontent.com/mwaskom/seaborn-data/master/${name}.csv`;
+
+      fetch(url)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        })
+        .then(csvText => {
+          Papa.parse(csvText, {
+            complete: function(results) {
+              loadingIndicator.style.display = 'none';
+
+              if (!results.data || results.data.length < 2) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle" style="margin-right:0.5rem;"></i>데이터를 파싱할 수 없습니다.</div>`;
+                return;
+              }
+
+              results.data._fileName = name + '.csv';
+              originalData = JSON.parse(JSON.stringify(results.data));
+              results.data._numericColumnsCache = null;
+
+              const rows = results.data.length - 1;
+              const cols = results.data[0].length;
+              document.getElementById('datasetBadgeName').textContent = name;
+              document.getElementById('datasetBadgeInfo').textContent = ` (${rows}행 × ${cols}열)`;
+              badge.classList.add('visible');
+
+              const describeData = calculateDescribe(results.data);
+              displayAllResults(describeData, calculateMissingData(results.data), results.data);
+            },
+            error: function() {
+              loadingIndicator.style.display = 'none';
+              resultDiv.style.display = 'block';
+              resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle" style="margin-right:0.5rem;"></i>CSV 파싱 오류가 발생했습니다.</div>`;
+            }
+          });
+        })
+        .catch(err => {
+          loadingIndicator.style.display = 'none';
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle" style="margin-right:0.5rem;"></i>데이터셋을 불러오지 못했습니다: ${err.message}</div>`;
+          if (activeCard) activeCard.classList.remove('active');
+        });
+    }
+
     // 결측치 처리 함수들
     function processMissingData(data, columnIndex, method, customValue = null) {
       console.log('=== processMissingData 시작 ===');
@@ -1689,6 +2496,22 @@
         }
       });
       
+      renderSeabornCards();
+
+      // 시각화 탭 파일 업로드
+      const vizUploadBox = document.getElementById('vizFileUpload');
+      const vizCsvFile = document.getElementById('vizCsvFile');
+      vizUploadBox.addEventListener('click', () => vizCsvFile.click());
+      vizCsvFile.addEventListener('change', (e) => { if (e.target.files[0]) handleVizFileUpload(e.target.files[0]); });
+      vizUploadBox.addEventListener('dragover', (e) => { e.preventDefault(); vizUploadBox.classList.add('dragover'); });
+      vizUploadBox.addEventListener('dragleave', () => vizUploadBox.classList.remove('dragover'));
+      vizUploadBox.addEventListener('drop', (e) => {
+        e.preventDefault(); vizUploadBox.classList.remove('dragover');
+        const f = e.dataTransfer.files[0];
+        if (f && (f.name.toLowerCase().endsWith('.csv') || f.type === 'text/csv')) handleVizFileUpload(f);
+        else alert('CSV 파일만 업로드 가능합니다.');
+      });
+
       console.log('이벤트 리스너 설정 완료');
     });
   </script>
